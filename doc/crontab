@@ -1,0 +1,8 @@
+# m h  dom mon dow   command
+*/2 * * * * $HOME/bin/incoming_check.py intrepid >> $HOME/var/log/incoming_intrepid_check.log 2>&1
+*/3 * * * * $HOME/bin/prebuild_check.py intrepid >> $HOME/var/log/prebuild_check.log 2>&1
+*/5 * * * * $HOME/bin/build_local_apt_packages.sh intrepid >/dev/null 2>&1
+
+*/2 * * * * $HOME/bin/incoming_check.py hardy >> $HOME/var/log/incoming_hardy_check.log 2>&1
+*/3 * * * * $HOME/bin/prebuild_check.py hardy >> $HOME/var/log/prebuild_hardy_check.log 2>&1
+*/5 * * * * $HOME/bin/build_local_apt_packages.sh hardy >/dev/null 2>&1
