@@ -25,6 +25,8 @@
 #	- Customize the configuration (eg. point the repositories to the proxy)
 
 # Change Log
+#	14 Mar 2099
+#		We realy need the buildd variant, and also build-essential installed
 #	7 Mar 2009
 #		Use the minbase variant to produce smaller chroots images
 #	2 Aug 2008
@@ -153,7 +155,7 @@ def chroot_config_files_update(chrootdir, release, arch):
 	copy_to_chroot(os.path.join("etc/timezone"), chrootdir);
 	copy_to_chroot(os.path.join("etc/apt/trusted.gpg"), chrootdir);	
 	os.system("sed -i s/"+my_release+"/"+release+"/g "+chrootdir+"/etc/apt/sources.list")
-	os.system("+echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
+	os.system("echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
 
 def chroot_postinstall_update(chrootdir, release, arch):
 	"""
@@ -168,8 +170,8 @@ def chroot_postinstall_update(chrootdir, release, arch):
 	#os.system("chroot "+chrootdir+" locale-gen US.UTF-8 pt_PT.UTF-8")
 	os.system("chroot "+chrootdir+" locale-gen "+lang)	
 	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install dh-make fakeroot cdbs sudo")
-	#os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install build-essential")
-	#os.system("chroot "+chrootdir+" sudo apt-get install -f")
+	# We need to install build-essential for hardy, it is not contained on the buildd variant
+	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install build-essential")
 	os.system("chroot "+chrootdir+" apt-get upgrade -y")
 	os.system("chroot "+chrootdir+" apt-get clean")
 	print "Creating schroot image "+chrootdir+".tar.gz, please be patient"
