@@ -16,44 +16,40 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# This script automates some of tasks required to build a schroot for
-# testing and building purposes.
+# This script automates some of tasks required to build a schroot image 
 # The script flow is:
-#	- Install on the pre-required packagfes like fakeroot, schroot, etc
-#	- Debootstrap the system to the version specific by the user
-#	- Copy core system config files from the main system to the schroot
-#	- Customize the configuration (eg. point the repositories to the proxy)
-
-# Change Log
-#	14 Mar 2099
-#		We realy need the buildd variant, and also build-essential installed
-#	7 Mar 2009
-#		Use the minbase variant to produce smaller chroots images
-#	2 Aug 2008
-#		Added the GPL-3 notice
-
-your_mirror = 'pt.archive.ubuntu.com'
+#	- Install the pre-required packages (fakeroot, schroot, etc)
+#	- Install a base into a directory using debootstrap
+#	- Copy required system config files into the schroot
+#	- Customize the configuration (eg. point the repositories to apt-cacher)
+"""
+chroot build helper script
+"""
+import os
+import sys
+import shutil
+import string
+import commands
 
 available_releases = ("hardy", "intrepid","jaunty")
 available_archs = ("i386", "amd64")
 
-"""
-helper chroot build script
-"""
-import os, sys, shutil;
-import string;
+apt_mirror = 'localhost:3142'
 
-print "\n###### Helper schroot build script\n"
+print 
+print "###### schroot build helper script"
+print
+
 # We need root
-if os.getuid() != 0:
-  print 'This script needs to be run as root/sudo !'
-  sys.exit(2)
+if os.getuid() != 0 :
+	print 'This script needs to be run as root/sudo !'
+	sys.exit(2)
 
 lang = os.environ['LANG']
-os.putenv('LANG', 'C') # We use popen, set a safe language
+os.putenv('LANG', 'C') # We use system commands, set a safe language
 
 def check_and_install_package(package):
-	has_package=int(os.popen('dpkg -l '+package+' 2>&1 | grep -c "^ii"').read())
+	has_package=int(commands.getoutput('dpkg -l '+package+' 2>&1 | grep -c "^ii"'))
 	if not has_package:
 		print "Package "+package+" is not installed, it needs to be installed"
 		install = ""
@@ -66,7 +62,7 @@ def check_and_install_package(package):
 		print "Package "+package+" was found"
 
 def get_host_release():
-	release = os.popen('lsb_release -c| cut -f2').read().strip("\r\n")
+	release = commands.getoutput('lsb_release -c| cut -f2').strip("\r\n")
 	return release
 
 def check_dir(name):
@@ -88,21 +84,11 @@ def check_requirements():
 	"""
 	Check script requirements
 	"""
-	print "Checking requirements"
-	# Check for universe respository
-	universe_enabled = int(os.popen('grep -v "#" /etc/apt/sources.list | grep -c "universe"').read())
-	if not universe_enabled:
-		print "The universe repository must be enabled, check /etc/apt/sources.list !"
-		sys.exit(2)
-	print "Repository universe is enabled"
-#	multiverse_enabled = int(os.popen('grep -v "#" /etc/apt/sources.list | grep -c "multiverse"').read())
-#	if not multiverse_enabled:
-#		print "The multiverse repository must be enabled, check /etc/apt/sources.list !"
-#		sys.exit(2)
-#	print "Repository multiverse is enabled"
+	print "Checking system requirements"
 	# Check for dhcroot and debootstrap
 	check_and_install_package("schroot")
 	check_and_install_package("debootstrap")
+	check_and_install_package("apt-cacher-ng")
 	print
 
 def check_base_dir():
@@ -130,31 +116,37 @@ def check_chroot_release(basedir):
 
 def debootstrap(release, arch, chrootdir):
 	varpath = os.path.join(chrootdir,"var")
-	if os.path.exists(varpath):
-		print varpath+" was already found.\n Base system will not be installed!"
-		ccontinue = ""
-		while ccontinue not in ("y","n"):
-			ccontinue = raw_input('Continue ? (y/n)')
-			if ccontinue == "n":
-				sys.exit(1);
-	else:
-		print "Installing base system for "+release+" "+arch+" into "+ chrootdir
-		os.system("debootstrap --variant=buildd --arch "+arch+" "+release+" "+chrootdir+" http://"+your_mirror+"/ubuntu/");
+	print "Installing base system for "+release+" "+arch+" into "+ chrootdir
+	os.system("debootstrap --variant=buildd --arch "+arch+" "+release+" "+chrootdir+" http://"+apt_mirror+"/ubuntu/");
 
 def chroot_config_files_update(chrootdir, release, arch):
 	"""
 	Updates config files fromt he chrootdir environment
 	"""
-	copy_to_chroot(os.path.join("etc/resolv.conf"), chrootdir);
-	copy_to_chroot(os.path.join("etc/apt/sources.list"), chrootdir);
-	copy_to_chroot(os.path.join("etc/passwd"), chrootdir);
-	copy_to_chroot(os.path.join("etc/shadow"), chrootdir);
-	copy_to_chroot(os.path.join("etc/group"), chrootdir);
-	copy_to_chroot(os.path.join("etc/hosts"), chrootdir);
-	copy_to_chroot(os.path.join("etc/sudoers"), chrootdir);
-	copy_to_chroot(os.path.join("etc/timezone"), chrootdir);
-	copy_to_chroot(os.path.join("etc/apt/trusted.gpg"), chrootdir);	
-	os.system("sed -i s/"+my_release+"/"+release+"/g "+chrootdir+"/etc/apt/sources.list")
+	default_sources="""
+deb http://mirror/ubuntu/ release main restricted
+deb http://mirror/ubuntu/ release-updates main restricted
+
+deb http://mirror/ubuntu/ release universe
+deb http://mirror/ubuntu/ release-updates universe
+
+deb http://mirror/ubuntu/ release multiverse
+deb http://mirror/ubuntu/ release-updates multiverse
+
+deb http://mirror/ubuntu release-security main restricted
+deb http://mirror/ubuntu release-security universe
+deb http://mirror/ubuntu release-security multiverse
+	"""
+	apt_mirror = "localhost:3142" 
+	default_sources = default_sources.replace("mirror", apt_mirror)
+	default_sources = default_sources.replace("release", release)
+	FILE = open(chrootdir+"/etc/apt/sources.list","w")
+	FILE.writelines(default_sources)
+	FILE.close()
+	copy_to_chroot("etc/resolv.conf", chrootdir);
+	copy_to_chroot("etc/hosts", chrootdir);
+	copy_to_chroot("etc/sudoers", chrootdir);
+
 	os.system("echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
 
 def chroot_postinstall_update(chrootdir, release, arch):
@@ -174,9 +166,14 @@ def chroot_postinstall_update(chrootdir, release, arch):
 	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install build-essential")
 	os.system("chroot "+chrootdir+" apt-get upgrade -y")
 	os.system("chroot "+chrootdir+" apt-get clean")
-	print "Creating schroot image "+chrootdir+".tar.gz, please be patient"
+	print "Creating schroot image "+chrootdir+".tar.gz, please be patient.."
 	os.system("tar -C "+chrootdir+" -czf "+chrootdir+".tar.gz .")
-	print "You must manually edit /etc/schroot/schroot.conf  and add:"
+	os.system("du -sh "+chrootdir+".tar.gz")
+	# We do not remove the chroot building dir - it will be quicker if we need to update
+	shutil.rmtree(chrootdir)
+	print "\n\n**************"
+	print "You must manually edit /etc/schroot/schroot.conf and add:"
+	print 
 	print "["+release+"."+arch+"]"
 	print "type=file"
 	print "file="+chrootdir+".tar.gz"
@@ -185,10 +182,7 @@ def chroot_postinstall_update(chrootdir, release, arch):
 	if arch=="i386":
 		print "personality=linux32"
 	print ""
-	print "Then you can use your schroot with:\n\tschroot -c "+release+"."+arch
-	# The following is required to disabled passwd overwritting
-	if os.path.exists("/etc/schroot/setup.d/30passwd"):
-	  os.system("mv /etc/schroot/setup.d/30passwd /etc/schroot/setup.d/disabled.30passwd")
+	print "Then you can use your schroot with:\n\tschroot -c "+release+"."+arch+" -p"
 
 my_release = get_host_release();
 check_requirements()
@@ -198,5 +192,6 @@ debootstrap(release, arch, chrootdir)
 chroot_config_files_update(chrootdir, release, arch)
 chroot_postinstall_update(chrootdir, release, arch)
 
-print "schroot "+release+" succesfully created"
+print 
+print "schroot for "+release+" successfully created."
 
