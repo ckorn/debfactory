@@ -125,17 +125,26 @@ def chroot_config_files_update(chrootdir, release, arch):
 	"""
 	default_sources="""
 deb http://mirror/ubuntu/ release main restricted
+deb-src http://mirror/ubuntu/ release main restricted
 deb http://mirror/ubuntu/ release-updates main restricted
+deb-src http://mirror/ubuntu/ release-updates main restricted
 
 deb http://mirror/ubuntu/ release universe
+deb-src http://mirror/ubuntu/ release universe
 deb http://mirror/ubuntu/ release-updates universe
+deb-src http://mirror/ubuntu/ release-updates universe
 
 deb http://mirror/ubuntu/ release multiverse
+deb-src http://mirror/ubuntu/ release multiverse
 deb http://mirror/ubuntu/ release-updates multiverse
+deb-src http://mirror/ubuntu/ release-updates multiverse
 
 deb http://mirror/ubuntu release-security main restricted
+deb-src http://mirror/ubuntu release-security main restricted
 deb http://mirror/ubuntu release-security universe
+deb-src http://mirror/ubuntu release-security universe
 deb http://mirror/ubuntu release-security multiverse
+deb-src http://mirror/ubuntu release-security multiverse
 	"""
 	apt_mirror = "localhost:3142" 
 	default_sources = default_sources.replace("mirror", apt_mirror)
@@ -158,18 +167,16 @@ def chroot_postinstall_update(chrootdir, release, arch):
 	os.system("chroot "+chrootdir+" apt-get -y update")
 	os.system("chroot "+chrootdir+" apt-get -y --force-yes install gnupg apt-utils")
 	os.system("chroot "+chrootdir+" apt-get -y update")
-	#os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install devscripts sudo vim locales dialog language-pack-en-base")
-	#os.system("chroot "+chrootdir+" locale-gen US.UTF-8 pt_PT.UTF-8")
 	os.system("chroot "+chrootdir+" locale-gen "+lang)	
-	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install dh-make fakeroot cdbs sudo")
+	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install wget dh-make fakeroot cdbs sudo nano")
+	os.system("chroot "+chrootdir+" DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install console-setup")
 	# We need to install build-essential for hardy, it is not contained on the buildd variant
 	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install build-essential")
-	os.system("chroot "+chrootdir+" apt-get upgrade -y")
+	os.system("chroot "+chrootdir+" apt-get -y upgrade")
 	os.system("chroot "+chrootdir+" apt-get clean")
 	print "Creating schroot image "+chrootdir+".tar.gz, please be patient.."
 	os.system("tar -C "+chrootdir+" -czf "+chrootdir+".tar.gz .")
 	os.system("du -sh "+chrootdir+".tar.gz")
-	# We do not remove the chroot building dir - it will be quicker if we need to update
 	shutil.rmtree(chrootdir)
 	print "\n\n**************"
 	print "You must manually edit /etc/schroot/schroot.conf and add:"
