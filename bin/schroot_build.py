@@ -169,7 +169,9 @@ def chroot_postinstall_update(chrootdir, release, arch):
 	os.system("chroot "+chrootdir+" apt-get -y update")
 	os.system("chroot "+chrootdir+" locale-gen "+lang)	
 	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install wget dh-make fakeroot cdbs sudo nano")
-	os.system("chroot "+chrootdir+" DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install console-setup")
+	os.system("mount --bind /proc "+chrootdir +"/proc")
+	os.system("chroot "+chrootdir+" sudo DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install console-setup")
+	os.system("umount "+chrootdir +"/proc")
 	# We need to install build-essential for hardy, it is not contained on the buildd variant
 	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install build-essential")
 	os.system("chroot "+chrootdir+" apt-get -y upgrade")
