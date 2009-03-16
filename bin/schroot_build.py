@@ -15,15 +15,16 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-
-# This script automates some of tasks required to build a schroot image 
-# The script flow is:
-#	- Install the pre-required packages (fakeroot, schroot, etc)
-#	- Install a base into a directory using debootstrap
-#	- Copy required system config files into the schroot
-#	- Customize the configuration (eg. point the repositories to apt-cacher)
 """
 chroot build helper script
+ This script automates the creation of a file based schroot image
+
+ The script performs the following actions:
+	- Check/install the pre-required packages (fakeroot, schroot, etc)
+	- Install a base system into the specified directory using debootstrap
+	- Copy required system config files into the chroot
+	- Customize the configuration (eg. point the repositories to apt-cacher)
+	- Append the schroot configuration entry to /etc/schroot/schoot.conf
 """
 import os
 import sys
@@ -46,28 +47,32 @@ if os.getuid() != 0 :
 	sys.exit(2)
 
 lang = os.environ['LANG']
-os.putenv('LANG', 'C') # We use system commands, set a safe language
+os.putenv('LANG', 'C') # We use system commands, use a reliable language
 
 def check_and_install_package(package):
 	has_package=int(commands.getoutput('dpkg -l '+package+' 2>&1 | grep -c "^ii"'))
 	if not has_package:
-		print "Package "+package+" is not installed, it needs to be installed"
+		print "Package "+package+" is required but not installed."
 		install = ""
 		while install not in ("y", "n"):
 			install = raw_input('Install it now ? (y/n)')
 			if install == "n":
+				print "Exiting on missing package."
 				sys.exit(1);
 		os.system('sudo apt-get install -y '+package)
 	else:
-		print "Package "+package+" was found"
+		print "Package "+package+" is installed."
 
 def get_host_release():
+	"""
+	Get the system release (lsb_release -c)
+	"""
 	release = commands.getoutput('lsb_release -c| cut -f2').strip("\r\n")
 	return release
 
-def check_dir(name):
+def check_create_dir(name):
 	"""
-	Check if a given directory exists, create if not
+	Check if a given directory exists, create it if not
 	"""
 	if os.path.exists(name):
 		print name+" was found"
@@ -76,8 +81,8 @@ def check_dir(name):
 		os.mkdir(name)
 
 def copy_to_chroot(fname, chrootdir):
-	print os.path.join("/"+fname)+" -> "+os.path.join(chrootdir,fname)
-	shutil.copyfile(os.path.join("/"+fname),os.path.join(chrootdir,fname))
+	print "/"+fname+" -> "+os.path.join(chrootdir,fname)
+	shutil.copyfile("/"+fname, os.path.join(chrootdir,fname))
 
 # Check requirements
 def check_requirements():
@@ -93,16 +98,16 @@ def check_requirements():
 
 def check_base_dir():
 	base_dir = "/home/schroot"
-	new_base_dir = raw_input("Please enter the chroot base dir\n["+base_dir+"]: ")
+	new_base_dir = raw_input("Please enter the chroot install base directory\n["+base_dir+"]: ")
 	basedir = new_base_dir or base_dir
-	check_dir(basedir)
+	check_create_dir(basedir)
 	return basedir
 
 def check_chroot_release(basedir):
 	base_release = get_host_release()
 	baserelease = ""
 	while baserelease not in available_releases:
-		new_base_release = raw_input("Please enter the chroot distro version, options are: "+string.join(available_releases)+"\n["+base_release+"]: ")
+		new_base_release = raw_input("Please enter the chroot release version, options are: "+string.join(available_releases)+"\n["+base_release+"]: ")
 		baserelease = new_base_release or base_release
 	base_arch = "i386"
 	basearch = ""
@@ -111,12 +116,12 @@ def check_chroot_release(basedir):
 		basearch = new_base_arch or base_arch
 
 	chrootdir = os.path.join(basedir, baserelease+"."+basearch)
-	check_dir(chrootdir)
+	check_create_dir(chrootdir)
 	return (baserelease, basearch, chrootdir)
 
 def debootstrap(release, arch, chrootdir):
 	varpath = os.path.join(chrootdir,"var")
-	print "Installing base system for "+release+" "+arch+" into "+ chrootdir
+	print "Installing base system for "+release+" ["+arch+"] into "+ chrootdir
 	os.system("debootstrap --variant=buildd --arch "+arch+" "+release+" "+chrootdir+" http://"+apt_mirror+"/ubuntu/");
 
 def chroot_config_files_update(chrootdir, release, arch):
@@ -162,8 +167,8 @@ def chroot_postinstall_update(chrootdir, release, arch):
 	"""
 	Perform postinstall update actions"
 	"""
-	print "Post install actions for the chrooted environment"
-	print "Installing deb building support tools"
+	print "Post install actions for the chroot image"
+	print "Installing some support tools"
 	os.system("chroot "+chrootdir+" apt-get -y update")
 	os.system("chroot "+chrootdir+" apt-get -y --force-yes install gnupg apt-utils")
 	os.system("chroot "+chrootdir+" apt-get -y update")
@@ -176,24 +181,28 @@ def chroot_postinstall_update(chrootdir, release, arch):
 	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install build-essential")
 	os.system("chroot "+chrootdir+" apt-get -y upgrade")
 	os.system("chroot "+chrootdir+" apt-get clean")
-	print "Creating schroot image "+chrootdir+".tar.gz, please be patient.."
+	print "Creating the schroot image "+chrootdir+".tar.gz, please be patient..."
 	os.system("tar -C "+chrootdir+" -czf "+chrootdir+".tar.gz .")
 	os.system("du -sh "+chrootdir+".tar.gz")
 	shutil.rmtree(chrootdir)
-	print "\n\n**************"
-	print "You must manually edit /etc/schroot/schroot.conf and add:"
-	print 
-	print "["+release+"."+arch+"]"
-	print "type=file"
-	print "file="+chrootdir+".tar.gz"
-	print "groups=admin"
-	print "root-groups=root,sbuild,admin"
-	if arch=="i386":
-		print "personality=linux32"
+	is_configured = int(commands.getoutput('grep -c '+release+"."+arch+" /etc/schroot/schroot.conf"))
+	if is_configured==0:
+		schoot_conf = "\n"
+		schoot_conf += "["+release+"."+arch+"]"+"\n"
+		schoot_conf += "type=file\n"
+		schoot_conf += "file="+chrootdir+".tar.gz\n"
+		schoot_conf += "groups=admin\n"
+		if arch=="i386":
+			schoot_conf += "personality=linux32\n" 
+		FILE = open("/etc/schroot/schroot.conf","a")
+		FILE.writelines(schoot_conf)
+		FILE.close()
+		#print "root-groups=root,sbuild,admin"
 	print ""
-	print "Then you can use your schroot with:\n\tschroot -c "+release+"."+arch+" -p"
+	print "You can now use your schroot with:\n\tschroot -c "+release+"."+arch+" -p"
 
-my_release = get_host_release();
+# This is the main app
+my_release = get_host_release()
 check_requirements()
 basedir = check_base_dir()
 (release, arch, chrootdir) = check_chroot_release(basedir)
