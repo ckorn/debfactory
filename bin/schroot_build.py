@@ -37,6 +37,11 @@ available_archs = ("i386", "amd64")
 
 apt_mirror = 'localhost:3142'
 
+chrootDirectory = None
+releaseVersion = None
+architecture = None
+usingSbuild = 0
+
 print 
 print "###### schroot build helper script"
 print
@@ -48,6 +53,26 @@ if os.getuid() != 0 :
 
 lang = os.environ['LANG']
 os.putenv('LANG', 'C') # We use system commands, use a reliable language
+
+def parse_options():
+	global chrootDirectory, releaseVersion, architecture, usingSbuild
+	for args in sys.argv:
+		if args.find('-c=') != -1:
+			chrootDirectory = args.replace('-c=', '')
+			print "Using chroot directory:", chrootDirectory
+			continue
+		if args.find('-r=') != -1:
+			releaseVersion = args.replace('-r=', '')
+			print "Trying release:",releaseVersion
+			continue
+		if args.find('-a=') != -1:
+			architecture = args.replace('-a=', '')
+			print "Trying architecture:",architecture
+			continue
+		if args == '-b':
+			usingSbuild = 1
+			print "sBuild options enabled"
+			continue
 
 def check_and_install_package(package):
 	has_package=int(commands.getoutput('dpkg -l '+package+' 2>&1 | grep -c "^ii"'))
@@ -86,6 +111,7 @@ def copy_to_chroot(fname, chrootdir):
 
 # Check requirements
 def check_requirements():
+	global usingSbuild
 	"""
 	Check script requirements
 	"""
@@ -94,9 +120,15 @@ def check_requirements():
 	check_and_install_package("schroot")
 	check_and_install_package("debootstrap")
 	check_and_install_package("apt-cacher-ng")
+	if usingSbuild == 1:
+		check_and_install_package("sbuild")
 	print
 
 def check_base_dir():
+	global chrootDirectory 
+	if chrootDirectory:
+		check_create_dir(chrootDirectory)
+		return chrootDirectory
 	base_dir = "/home/schroot"
 	new_base_dir = raw_input("Please enter the chroot install base directory\n["+base_dir+"]: ")
 	basedir = new_base_dir or base_dir
@@ -104,13 +136,18 @@ def check_base_dir():
 	return basedir
 
 def check_chroot_release(basedir):
+	global releaseVersion, architecture
 	base_release = get_host_release()
 	baserelease = ""
+	if releaseVersion:
+		baserelease = releaseVersion
 	while baserelease not in available_releases:
 		new_base_release = raw_input("Please enter the chroot release version, options are: "+string.join(available_releases)+"\n["+base_release+"]: ")
 		baserelease = new_base_release or base_release
 	base_arch = "i386"
 	basearch = ""
+	if architecture:
+		basearch = architecture
 	while basearch not in available_archs:
 		new_base_arch = raw_input("Please enter the chroot architecture, options are: "+string.join(available_archs)+"\n["+base_arch+"]: ")
 		basearch = new_base_arch or base_arch
@@ -164,6 +201,7 @@ deb-src http://mirror/ubuntu release-security multiverse
 	os.system("echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
 
 def chroot_postinstall_update(chrootdir, release, arch):
+	global usingSbuild
 	"""
 	Perform postinstall update actions"
 	"""
@@ -185,23 +223,26 @@ def chroot_postinstall_update(chrootdir, release, arch):
 	os.system("tar -C "+chrootdir+" -czf "+chrootdir+".tar.gz .")
 	os.system("du -sh "+chrootdir+".tar.gz")
 	shutil.rmtree(chrootdir)
-	is_configured = int(commands.getoutput('grep -c '+release+"."+arch+" /etc/schroot/schroot.conf"))
+	is_configured = int(commands.getoutput("grep -v '#' /etc/schroot/schroot.conf | grep -c "+release+"."+arch))
 	if is_configured==0:
-		schoot_conf = "\n"
-		schoot_conf += "["+release+"."+arch+"]"+"\n"
-		schoot_conf += "type=file\n"
-		schoot_conf += "file="+chrootdir+".tar.gz\n"
-		schoot_conf += "groups=admin\n"
+		schroot_conf = "\n"
+		schroot_conf += "["+release+"."+arch+"]"+"\n"
+		schroot_conf += "type=file\n"
+		schroot_conf += "file="+chrootdir+".tar.gz\n"
+		schroot_conf += "groups=admin\n"
+		if usingSbuild == 1:
+			schroot_conf += "root-groups=sbuild\n"
 		if arch=="i386":
-			schoot_conf += "personality=linux32\n" 
+			schroot_conf += "personality=linux32\n" 
 		FILE = open("/etc/schroot/schroot.conf","a")
-		FILE.writelines(schoot_conf)
+		FILE.writelines(schroot_conf)
 		FILE.close()
 		#print "root-groups=root,sbuild,admin"
 	print ""
 	print "You can now use your schroot with:\n\tschroot -c "+release+"."+arch+" -p"
 
 # This is the main app
+parse_options()
 my_release = get_host_release()
 check_requirements()
 basedir = check_base_dir()
