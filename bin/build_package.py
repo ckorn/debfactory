@@ -90,7 +90,7 @@ pck_basename=dsc_file.replace('.dsc','')
 log_name=pck_basename+datetime.datetime.now().strftime("_%Y_%M_%d_%m_%s_i386.log")
 log_name_i386=log_name
 start_time=time.time()
-rc_i386=os.system('sbuild -d '+release+".i386 -A "+dsc_file)
+rc_i386=os.system('sbuild -d '+release+' -c '+release+'.i386 -A '+dsc_file)
 elapsed_time_i386=`int(time.time() - start_time)`
 shutil.copyfile('current', logs_dir+'/'+log_name)
 print "Saved log to", logs_dir+'/'+log_name
@@ -101,7 +101,7 @@ else:
    log_name=pck_basename+datetime.datetime.now().strftime("_%Y_%M_%d_%m_%s_amd64.log")
    log_name_amd64=log_name
    start_time=time.time()
-   rc_amd64=os.system('sbuild -d '+release+".amd64 -A "+dsc_file)
+   rc_amd64=os.system('sbuild -d '+release+' -c '+release+'.amd64 -A '+dsc_file)
    elapsed_time_amd64=`int(time.time() - start_time)`
    print rc_amd64
    shutil.copyfile('current', logs_dir+'/'+log_name)
