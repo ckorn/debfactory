@@ -27,6 +27,13 @@ def get_files_list(source):
   f.close()
   return file_list
 
+def revi(a, b):
+  if not a: return b
+  return revi(a[1:], a[0]+b)
+
+def revertString(s):
+  return revi(s, "")
+
 def getOrigTarGzName(package):
   f=open(package, 'r')
   source = None
@@ -38,8 +45,9 @@ def getOrigTarGzName(package):
       source = parts[1]
     elif line[0:8]=="Version:":
       parts = string.split(line)
-      parts = string.split(parts[1], '-')
-      version = parts[0]
+      parts = revertString(parts[1])
+      parts = parts.split('-', 1)
+      version = revertString(parts[1])
       break
   if version.find(":") != -1:
     epoch, version = version.split(":",1)
