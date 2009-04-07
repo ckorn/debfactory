@@ -47,7 +47,9 @@ def getDevPackages(header):
   files = aptFile.readlines()
   stripped_files = list()
   for file in files:
-    stripped_files.append(file.strip("\r\n"))
+  	stripped_file = file.strip("\r\n")
+  	if not stripped_file in stripped_files:
+			stripped_files.append(stripped_file)
   return stripped_files
 
 def printDevs(devs):
