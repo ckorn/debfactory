@@ -84,7 +84,6 @@ def chooseDevPackage(devs, current, nMax, defaultSelection):
     return dev
   
   chosenDev = raw_input('['+str(current)+'/'+str(nMax)+'] Choose the right dev Package [0:'+str(len(devs)-1)+'] or press [enter] for default '+ str(defaultSelection) +': ')
-  if chosenDev == "s": return None
   if chosenDev == "":  chosenDev = defaultSelection
   dev = devs[int(chosenDev)]
   dev, dummy = dev.split(":", 1)
