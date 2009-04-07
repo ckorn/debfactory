@@ -47,19 +47,45 @@ def getDevPackages(header):
   files = aptFile.readlines()
   stripped_files = list()
   for file in files:
-  	stripped_file = file.strip("\r\n")
-  	if not stripped_file in stripped_files:
+    stripped_file = file.strip("\r\n")
+    dev, dummy = stripped_file.split(":", 1)
+    dev = dev.strip()
+    alreadyIn = False
+    for curStripped_file in stripped_files:
+      if curStripped_file.find(dev) <> -1:
+        alreadyIn = True
+    
+    if not alreadyIn:
 			stripped_files.append(stripped_file)
   return stripped_files
 
-def printDevs(devs):
+def printDevs(devs, dev_list):
+  ret = -1
   for i in range(len(devs)):
-    dev = devs[i]
-    print str(i) + ": " + dev
+    line = devs[i]
+    
+    dev, dummy = line.split(":", 1)
+    dev = dev.strip()
+    
+    if dev in dev_list:
+      print "\033[1;31m" + str(i) + ": " + line + "\033[0;m"
+      ret = i
+    else:
+      print str(i) + ": " + line
+  return ret
 
-def chooseDevPackage(devs, current, nMax):
-  chosenDev = raw_input('['+str(current)+'/'+str(nMax)+'] Choose the right dev Package [0:'+str(len(devs)-1)+'] or press [enter] to skip: ')
-  if chosenDev == "": return None
+def chooseDevPackage(devs, current, nMax, defaultSelection):
+  if defaultSelection == -1:
+    chosenDev = raw_input('['+str(current)+'/'+str(nMax)+'] Choose the right dev Package [0:'+str(len(devs)-1)+'] or press [enter] to skip: ')
+    if chosenDev == "": return None
+    dev = devs[int(chosenDev)]
+    dev, dummy = dev.split(":", 1)
+    dev = dev.strip()
+    return dev
+  
+  chosenDev = raw_input('['+str(current)+'/'+str(nMax)+'] Choose the right dev Package [0:'+str(len(devs)-1)+'] or press [enter] for default '+ str(defaultSelection) +': ')
+  if chosenDev == "s": return None
+  if chosenDev == "":  chosenDev = defaultSelection
   dev = devs[int(chosenDev)]
   dev, dummy = dev.split(":", 1)
   dev = dev.strip()
@@ -92,15 +118,15 @@ if __name__=="__main__":
     devs = getDevPackages(file_header[1])
 
     if len(devs) == 0:
-      print "Warning: no dev package for header '" + file_header[1] + "' found!"
+      print "Warning: no dev package for header '" + file_header[1] + "' in file '" + file_header[0] + "' found!"
       con = raw_input('Continue (y/n)? ')
       if con=="n":
         sys.exit()
     else:
       if not isInStdLib(devs):
-        printDevs(devs)
+        defaultSelection = printDevs(devs, dev_list)
         print file_header[0],file_header[1]
-        chosenDev = chooseDevPackage(devs, i, numHeaders)
+        chosenDev = chooseDevPackage(devs, i, numHeaders, defaultSelection)
         if chosenDev != None and not chosenDev in dev_list:
           dev_list.append(chosenDev)
       else:
