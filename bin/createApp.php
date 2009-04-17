@@ -425,6 +425,7 @@ END: WRITE TABLE 'gd_app_file'
 		print "<td><label for=\"release_".$id."_files\">Files:</label></td>\n";
 		print "<td>\n";
 		print "<textarea id=\"release_".$id."_files\" name=\"release_".$id."_files\" cols=\"50\" rows=\"4\"></textarea>\n";
+		print "<br/>One file per line in the order that it should occur on getdeb<br/>\n";
 		print "</td>\n";
 		print "</tr>\n";
 
