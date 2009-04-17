@@ -1,26 +1,26 @@
 <?php
 	$releases = array("9"  => "Hardy i386",
-                          "10" => "Hardy amd64",
-                          "11" => "Intrepid i386",
-                          "12" => "Intrepid amd64");
+			  "10" => "Hardy amd64",
+			  "11" => "Intrepid i386",
+			  "12" => "Intrepid amd64");
 
 	$categories = array("1"  => "Audio Tools",
-                            "2"  => "Programmierung",
-                            "3"  => "Spiele",
-                            "4"  => "Grafik & Design",
-                            "5"  => "Heim & Bildung",
-                            "6"  => "Info Management",
-                            "7"  => "Internet & Netzwerk",
-                            "8"  => "Productivity",
-                            "9"  => "Wissenschaft & Mathe",
-                            "10" => "Systemwerkzeuge",
-                            "11" => "Utilities",
-                            "12" => "Video Tools");
+			    "2"  => "Development",
+			    "3"  => "Games",
+			    "4"  => "Graphics & Design",
+			    "5"  => "Home & Education",
+			    "6"  => "Info Management",
+			    "7"  => "Internet & Network",
+			    "8"  => "Productivity",
+			    "9"  => "Science & Math",
+			    "10" => "System Tools",
+			    "11" => "Utilities",
+			    "12" => "Video Tools");
 
 	$types = array("1" => "Desktop",
-                       "2" => "Kommandozeile",
-                       "3" => "Server",
-                       "4" => "Webbasierend");
+		       "2" => "Command Line",
+		       "3" => "Server",
+		       "4" => "Web Based");
 
 	$best = array("GNOME", "KDE");
 
@@ -39,7 +39,7 @@
 	}
 
 	function query($sql) {
-		print "<pre>".htmlentities($sql)."</pre><br/>\n";
+		//print "<pre>".htmlentities($sql)."</pre><br/>\n";
 		$ret = mysql_query($sql);
 		if(!$ret) {
 			die('Error: '.mysql_error());
@@ -219,7 +219,7 @@ BEGIN: WRITE TABLE 'gd_app_release'
 					$addValues .= ", '".mysql_real_escape_string($command)."'";
 				}
 
-				echo "<b>".$release."</b><br/>\n";
+				//echo "<b>".$release."</b><br/>\n";
 				$sql = "INSERT INTO
 					gd_app_release
 					(ver_id,
@@ -251,12 +251,12 @@ BEGIN: WRITE TABLE 'gd_app_file'
 
 				$files = trim($_POST['release_'.$id.'_files'])!="" ? $_POST['release_'.$id.'_files'] : NULL;
 
-				echo "<b>".$release." files</b><br/>\n";
+				//echo "<b>".$release." files</b><br/>\n";
 
 				$files_array = explode("\r\n", $files);
-				echo "<pre>\n";
-				var_dump($files_array);
-				echo "</pre>\n";
+				//echo "<pre>\n";
+				//var_dump($files_array);
+				//echo "</pre>\n";
 
 				// First find the release ID
 				$sql = "SELECT
