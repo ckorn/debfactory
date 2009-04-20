@@ -2,7 +2,9 @@
 	$releases = array("9"  => "Hardy i386",
 			  "10" => "Hardy amd64",
 			  "11" => "Intrepid i386",
-			  "12" => "Intrepid amd64");
+			  "12" => "Intrepid amd64",
+			  "13" => "Jaunty i386",
+			  "14" => "Jaunty amd64");
 
 	$categories = array("1"  => "Audio Tools",
 			    "2"  => "Development",
