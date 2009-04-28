@@ -15,6 +15,11 @@ prebuilddir = os.environ['HOME']+'/abs/pre_build'
 incomingdir = '/home/ftp/incoming'
 ready_dir=os.environ['HOME']+'/abs/post_build'
 
+gpg_ops = '--no-options --no-default-keyring --keyring '+os.environ['HOME']+'/debfactory/keyrings/uploaders.gpg '
+
+lang = os.environ['LANG']
+os.putenv('LANG', 'C') # We use system commands reply check, use a reliable language
+
 def send_error(error, package, dest):
   message = "Subject: Package Upload Failure - "+os.path.basename(package)+"\n\n"
   if error=="err_source":
@@ -61,7 +66,7 @@ for package in packages:
   	author_line=pgrep.readline().strip('\r\n')
   pgrep.close()
   dummy, change_author = author_line.split(":")
-  pcheck=os.popen('gpg --verify --logger-fd=1 '+package)
+  pcheck=os.popen('gpg '+gpg_ops+' --verify --logger-fd=1 '+package)
   lines = pcheck.readlines()
   sign_author = None
   for line in lines:
