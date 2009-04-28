@@ -101,7 +101,7 @@ else:
    log_name=pck_basename+datetime.datetime.now().strftime("_%Y_%M_%d_%m_%s_amd64.log")
    log_name_amd64=log_name
    start_time=time.time()
-   rc_amd64=os.system('sbuild -d '+release+' -c '+release+'.amd64 -A '+dsc_file)
+   rc_amd64=os.system('sbuild -d '+release+' -c '+release+'.amd64 '+dsc_file)
    elapsed_time_amd64=`int(time.time() - start_time)`
    print rc_amd64
    shutil.copyfile('current', logs_dir+'/'+log_name)
