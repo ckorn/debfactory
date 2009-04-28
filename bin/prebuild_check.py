@@ -11,6 +11,7 @@ import shutil
 import smtplib
 
 prebuilddir = os.environ['HOME']+'/abs/pre_build'
+build_package = os.environ['HOME']+'/debfactory/bin/build_package.py'
 
 def send_email(toaddrs, message):
     fromaddr = "GetDeb Automated Builder <autobuild@getdeb.net>"
@@ -39,7 +40,7 @@ for package in packages:
   if os.path.exists(package+'.failed'):
 	print "Warning: Skipping "+package+'.failed'
 	continue
-  os.system('/home/build/bin/build_package.py '+release+' '+package);
+  os.system(build_package+' '+release+' '+package);
 print "Done"
 
 os.unlink('/tmp/build_'+release+'.lock')
