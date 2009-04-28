@@ -1,4 +1,21 @@
 #!/usr/bin/python
+#
+#    (C) Copyright 2009, GetDeb Team - https://launchpad.net/~getdeb
+#    --------------------------------------------------------------------
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#    --------------------------------------------------------------------
+
 #  Validate all .changes from a given release
 #   - Verify we can validate the signature
 #   - Validate md5 of the include files
@@ -132,8 +149,6 @@ for package in packages:
   message = "Subject: Package Upload Success - "+os.path.basename(package)
   message += "\n\nYour package was succesfully uploaded for "+release
   send_email(sign_author, message)
-
-#os.system('sudo /home/build/sbin/incoming_unchown.sh')
 
 print "Done"
 
