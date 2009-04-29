@@ -34,7 +34,6 @@ ready_dir=os.environ['HOME']+'/abs/post_build'
 
 gpg_ops = '--no-options --no-default-keyring --keyring '+os.environ['HOME']+'/debfactory/keyrings/uploaders.gpg '
 
-lang = os.environ['LANG']
 os.putenv('LANG', 'C') # We use system commands reply check, use a reliable language
 
 def send_error(error, package, dest):

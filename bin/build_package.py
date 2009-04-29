@@ -34,7 +34,6 @@ logs_url='http://abs.getdeb.net/build_log'
 ready_url='http://abs.getdeb.net/post_build'
 prebuilddir = os.environ['HOME']+'/abs/pre_build'
 
-lang = os.environ['LANG']
 os.putenv('LANG', 'C') # We use system commands reply check, use a reliable language
 
 def uniq(alist):
