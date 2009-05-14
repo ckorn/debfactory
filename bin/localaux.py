@@ -30,38 +30,22 @@ def uniq(alist):
 
 """ Small helper class for logging """
 class Logger:
-	def __init__(self, verbose=True):
-		self.verbose = verbose
-	def log(self, message):
-		if self.verbose:
-			print message	
-
-		
-""" Lock file management class"""
-class LockFile:
-	def __init__(self, Log, lock_filename):
-		self.log = Log
-		self.lock_filename = lock_filename
-		if os.path.islink(lock_filename):
-			print 'FATAL ERROR: symlink '+lock_filename
-			sys.exit(2)
-		#oflags = os.O_EXCL | os.O_RDWR |os.O_NONBLOCK| os.O_CREAT
-		oflags = os.O_RDWR |os.O_NONBLOCK| os.O_CREAT | os.O_EXCL
-		try:	
-			self.lock_fd = os.open(lock_filename, oflags)
-			os.write(self.lock_fd, "%d\n" % os.getpid())
-		except:
-			Log.log("Unable to acquire lock %s" % lock_filename)
-			Log.log("FAILED: "+`sys.exc_info()[1]`)
-			sys.exit(2)
-		atexit.register(self.lock_remove, lock_filename, self.lock_fd)
-	def lock_remove(self, fname, lock_fd):
-		try:
-			os.close(lock_fd)
-			os.unlink(fname)
-		except:
-			pass
-
+    def __init__(self, verbose=True):
+        self.verbose = verbose
+        
+    def log(self, message, verbose=None):
+        """
+        If verbose is True print the message
+        """
+        verbose = verbose or self.verbose
+        if self.verbose:
+            print message
+            
+    def print_(self, message):
+        """
+        always print a message
+        """
+        print message
 		
 def check_md5sum(filename, expected_md5sum):
 	"""

@@ -16,12 +16,12 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #    --------------------------------------------------------------------
 """
-  This script will check the ftp incoming directoy for debian source
+  This script will check the ftp incoming directory for debian source
   packages. 
   When *_source.changes is found, it's contents are verified and
   the files are moved to the pre_build queue.
   
-  The expected structure is ftp_incoming_dir/release_name, 
+  The expected structure is ftp_incoming_dir/release/component 
     eg: /home/ftp/incoming/jaunty
   
   Files will be verified with the following rules
@@ -29,17 +29,19 @@
 		Get list of files into filelist
 		...
 		
-   We use a file lock to aboid paralell runs		
+   Use a lock file to avoid concurrent runs		
   
 """
-import os, sys, commands, shutil
+import os
+import sys
 import commands
+import time
+import glob
 from optparse import OptionParser
 from configobj import ConfigObj
 from localaux import *
-import glob
-import dpkg
-import time
+from dpkg_control import *
+from lockfile import *
 
 config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
 config = ConfigObj(config_file)
@@ -49,143 +51,162 @@ try:
 	upload_status_email = config['upload_status_email']
 	ftp_incoming_dir = config['ftp_incoming_dir']
 	pre_build_dir = config['pre_build_dir']
-except:
+except Exception:
 	print "Configuration error"
 	print `sys.exc_info()[1]`
 	sys.exit(3)
-	
-incoming_lock_file = '/tmp/check_incoming_lock_file.pid'
 
 # Clean up all files older than 24h
 CLEANUP_TIME = 24*3600
 
-gpg_ops = '--no-options --no-default-keyring --keyring '+os.environ['HOME']+'/debfactory/keyrings/uploaders.gpg '
-os.putenv('LANG', 'C') # We check system command replies, use a reliable language
-
 Log = Logger()	
 
-def check_source_changes(changes_file, release):
+def check_source_changes(release, component, filename):
 	"""	
 	Check a _source.changes file and proceed as described in the script
 	action flow . 
 	"""
 	target_mails = [upload_status_email]
-	Log.log("Checking "+changes_file)	
-	report_msg = "File: %s\n" % changes_file
-	report_msg  += '-----------------\n'
-	(rc, output) = commands.getstatusoutput('gpg '+gpg_ops+' --verify --logger-fd=1 '+changes_file)	
-	output_lines = output.split("\n")
-	sign_author = None
-	for line in output_lines:		
-		if line.startswith("gpg: Good signature from"):
-			print line
-			dummy, sign_author, dummy = line.split('"')	
-	if rc<>0 or not sign_author:
-		print output
-		print "ERROR: Unable to verify GPG key for ", changes_file				
-		return
-	target_mails.append(sign_author)
-	report_msg  += "Signed By: %s\n" % sign_author
-
-		
-	# Get list of files described on the changes
-	report_title = "%s upload FAILED\n" % os.path.basename(changes_file)
-	report_msg += "List of files:\n"	
-	report_msg += "--------------\n"
-	file_list = dpkg.get_files_list(changes_file)		
-	base_dir = os.path.dirname(changes_file)
+	Log.print_("Checking %s/%s/%s" % (release, component, filename))	
 	
-	filename_list = []	
+	report_title = "%s/%s/%s upload FAILED\n" \
+		% (release, component, filename)
+	report_msg = "File: %s/%s/%s\n" % (release, component, filename)
+	report_msg  += '-----------------\n'
+	
+	source_dir = "%s/%s/%s" \
+		% (ftp_incoming_dir, release, component)
+	full_pre_build_dir = "%s/%s/%s" \
+		% (pre_build_dir, release, component)
+				
+	if not os.path.exists(full_pre_build_dir):
+		os.makedirs(full_pre_build_dir, 0755)
+	
+	control_file = DebianControlFile("%s/%s" % (source_dir, filename))
+	gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
+		+'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
+
+	if not gpg_sign_author:
+		Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
+		return
+
+	target_mails.append(gpg_sign_author)
+	report_msg  += "Signed By: %s\n" % gpg_sign_author
 	
 	# Check if orig_file is available
-	orig_file = dpkg.getOrigTarGzName(changes_file)	
+	version = control_file['Version']
+	upstream_version, sep, debversion = version.partition("-")	
+	orig_file = "%s_%s.orig.tar.gz" % (control_file['Source'], \
+		upstream_version)	
 	if not orig_file:		
-		return
-					
-	if os.path.exists("%s/%s" % (base_dir, orig_file)):
-		filename_list.append("%s/%s" % (base_dir,orig_file))
-	else:
-		if not os.path.exists("%s/%s/%s" % (pre_build_dir, release, orig_file)):
-			print "ERROR: Missing %s for %s" % (orig_file, changes_file)
-			report_msg += "ERROR: Missing %s for %s\n" % (orig_file, changes_file)
+		Log.print_("FIXME: This should never happen")
+		# FIXME: This should never happen but we should send a message
+		# anyway
+		return	
+			
+	if not os.path.exists("%s/%s" % (source_dir, orig_file)):
+		pre_build_orig = "%s/%s" % (full_pre_build_dir, orig_file)
+		if not os.path.exists(pre_build_orig):			
+			report_msg += "ERROR: Missing %s for %s\n" \
+				% (orig_file, changes_file)
+			Log.print_(report_msg)
 			send_mail_message(target_mails, report_title, report_msg)
 			return
 		else:
-			Log.log('No orig.tar.gz, using the one already available '+ base_dir+"/"+orig_file)
-	
-	for file in file_list:
-		report_msg += "%s - " % file[4]		
-		filename = base_dir+"/"+file[4]
-		filename_list.append(filename)		
-		if not os.path.exists(filename):
-			print 'ERROR: Could not find '+filename+" listed at ", changes_file			
-			#send_error("err_file", package, sign_author)
-			report_msg += "Missing\n"			
-			send_mail_message(target_mails, report_title, report_msg)
-			return
-		md5sum = check_md5sum(filename, file[0])
-		if md5sum:
-			print md5sum
-			print 'ERROR: File %s md5sum is %s, expected %s' % (filename, md5sum, file[0])
-			report_msg += "MD5 mismatch\n"
-			send_mail_message(target_mails, report_title, report_msg)
-			return			
-		report_msg += "OK\n"		
-
-	# Source package passed all tests, let's move it to pre_build		
-	target_dir = "%s/%s" % (pre_build_dir, release)
-	if not os.path.exists(target_dir):
-		os.mkdir(target_dir)
-	for file in uniq(filename_list):
-		print 'Moving ', file,'-> '+target_dir
-		if os.path.exists("%s/%s" % (target_dir, os.path.basename(file))):
-			os.unlink("%s/%s" % (target_dir, os.path.basename(file)))
-		try:
-			shutil.move(file, target_dir)
-		except:
-			print "FAILED: "+`sys.exc_info()[1]`
-			return
-			
-	report_title = "%s upload SUCCESSFUL\n" % os.path.basename(changes_file)
+			Log.print_('No orig.tar.gz, using %s ' % pre_build_orig)		
+		
+	# Get list of files described on the changes	
+	report_msg += "List of files:\n"	
+	report_msg += "--------------\n"
+	file_list = control_file.files_list()
+	for file_info in file_list:
+		report_msg += "%s (%s) MD5: %s \n" \
+			% (file_info.name, file_info.size, file_info.md5sum)		
+	try:		
+		control_file.move(full_pre_build_dir)
+	except DebianControlFile.MD5Error as e:
+		report_msg = "MD5 mismatch: Expected %s, got %s, file: %s\n" \
+			% (e.expected_md5, e.found_md5, e.name)	
+		Log.print_(report_msg)
+		send_mail_message(target_mails, report_title, report_msg)
+		return
+	except DebianControlFile.FileNotFoundError as e:
+		report_msg = "File not found: %s" % (e.filename)			
+		Log.print_(report_msg)
+		send_mail_message(target_mails, report_title, report_msg)
+		return			
+	finally:
+		control_file.remove()
+		
+	report_title = "%s/%s/%s upload SUCCESSFUL\n" \
+		% (release, component, filename)
+		
+	Log.print_(report_title)
 	send_mail_message(target_mails, report_title, report_msg)	
-				
-def check_release_dir(releasedir):
-	""" 
-	Check a release directory and proceed as described in the script
-	action flow . 
+
+def check_incoming_dir():
 	"""
-	Log.log("Checking "+releasedir)
-	file_list = glob.glob(releasedir+"/*")
-	release = os.path.basename(releasedir)
-	change_list = []
+	Check the ftp incoming directory for release directories
+	"""	
+	file_list = glob.glob("%s/*" \
+		% (ftp_incoming_dir))
+	for file in file_list:
+		if os.path.isdir(file):
+			release = os.path.basename(file)
+			check_release_dir(release)
+	
+def check_release_dir(release):
+	"""
+	Check a release directory for components
+	"""
+	file_list = glob.glob("%s/%s/*" \
+		% (ftp_incoming_dir, release))	
+	for file in file_list:
+		if os.path.isdir(file):
+			component = os.path.basename(file)
+			check_release_component_dir(release, component)
+	
+def check_release_component_dir(release, component):
+	""" 
+	Check a release/component directory
+		*_source.changes will triger a verification/move action
+		files older than CLEANUP_TIME will be removed
+	"""
+	Log.log("Checking %s/%s" % (release, component))
+	file_list = glob.glob("%s/%s/%s/*" \
+		% (ftp_incoming_dir, release, component))
+		
 	for fname in file_list:
+		if not os.path.exists(fname): # File was removed ???
+			continue
 		if fname.endswith("_source.changes"):
-			check_source_changes(fname, release)	
-			os.unlink(fname)
+			check_source_changes(release, component, os.path.basename(fname))	
+			# There could be an error, remove it anyway
+			if os.path.exists(fname):
+				os.unlink(fname)
 		else:
 			if time.time() - os.path.getmtime(fname) > CLEANUP_TIME:
 				print "Removing old file: %s", fname
-				try:
-					os.unlink(fname)
-				except:
-					print "FAILED: "+`sys.exc_info()[1]`			
+				os.unlink(fname)
 	Log.log("Done")
 	
 def main():
+	
 	parser = OptionParser()
 	parser.add_option("-q", "--quiet",
 		action="store_false", dest="verbose", default=True,
         help="don't print status messages to stdout")
 	(options, args) = parser.parse_args()
-	Log.verbose=options.verbose
+	Log.verbose=options.verbose	
+	try:
+		lock = LockFile("ftp_incoming")
+	except LockFile.AlreadyLockedError:
+		Log.log("Unable to acquire lock, exiting")
+		return
 	
-	lock = LockFile(Log, incoming_lock_file)
+	# Check and process the incoming directoy
+	check_incoming_dir()
 	
-	# Get list of releases
-	releases = glob.glob(ftp_incoming_dir+'/[a-z]*')
-	for release in releases:
-		check_release_dir(release)		
-			
 if __name__ == '__main__':
 	try:
 		main()

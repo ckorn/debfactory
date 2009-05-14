@@ -15,8 +15,8 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #    --------------------------------------------------------------------
-
-# This files provides several functions to handle debian packaging files
+#
+# This file provides several functions to handle debian packaging files
 
 import string
 
@@ -62,3 +62,6 @@ def getOrigTarGzName(package):
     epoch, version = version.split(":",1)
   f.close()
   return source+"_"+version+".orig.tar.gz"
+  
+
+ 
