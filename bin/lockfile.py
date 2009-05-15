@@ -53,7 +53,7 @@ class LockFile:
         
         try:
             lock_fd = os.open(lock_filename, oflags)		        
-        except OSError as e:
+        except OSError, e:
             if e.errno == errno.EEXIST:
                 raise self.AlreadyLockedError
             else:

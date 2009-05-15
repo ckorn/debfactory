@@ -120,14 +120,14 @@ def check_source_changes(release, component, filename):
         
     try:		
         control_file.copy(destination_dir)        
-    except DebianControlFile.MD5Error as e:
+    except DebianControlFile.MD5Error, e:
         report_msg = "MD5 mismatch: Expected %s, got %s, file: %s\n" \
             % (e.expected_md5, e.found_md5, e.name)	
         Log.print_(report_msg)
         send_mail_message(target_mails, report_title, report_msg)
         control_file.remove()
         return
-    except DebianControlFile.FileNotFoundError as e:
+    except DebianControlFile.FileNotFoundError, e:
         report_msg = "File not found: %s\n" % (e.filename)			
         Log.print_(report_msg)
         send_mail_message(target_mails, report_title, report_msg)
@@ -198,13 +198,13 @@ def sbuild_package(release, component, control_file, arch, gpg_sign_author):
                         % (file_info.name, file_info.size, file_info.md5sum)                
                 try:
                     changes_file.move(destination_dir)
-                except DebianControlFile.MD5Error as e:
+                except DebianControlFile.MD5Error,e:
                     report_msg = "MD5 mismatch: Expected %s, got %s, file: %s\n" \
                         % (e.expected_md5, e.found_md5, e.name)	
                     Log.print_(report_msg)
                     send_mail_message(target_mails, report_title, report_msg)
                     return
-                except DebianControlFile.FileNotFoundError as e:
+                except DebianControlFile.FileNotFoundError, e:
                     report_msg = "File not found: %s" % (e.filename)			
                     Log.print_(report_msg)
                     send_mail_message(target_mails, report_title, report_msg)
