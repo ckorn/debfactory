@@ -146,16 +146,19 @@ def check_source_changes(release, component, filename):
     # Remove previous failed status
     if os.path.exists('%s.failed' % changes_file):
         os.unlink('%s.failed' % changes_file)
-        
+      
+    # Before building we move the source to the post_build queue anyway
+    full_post_build_dir = "%s/%s/%s" % (post_build_dir,  release,  component)        
+    control_file.move(full_post_build_dir)        
+
     version = control_file.version()     
     os.chdir(destination_dir)
     i386_rc = sbuild_package(release, component, control_file, 'i386',  gpg_sign_author)
     if i386_rc == 0:
-        sbuild_package(release, component, control_file, 'amd64',  gpg_sign_author)
-        control_file.remove()
+        sbuild_package(release, component, control_file, 'amd64',  gpg_sign_author) 
     else:
         shutil.move(changes_file ,  "%s.failed" %  changes_file)
-        
+    
 def sbuild_package(release, component, control_file, arch, gpg_sign_author):
     """Attempt to build package using sbuild """        
     
@@ -167,8 +170,8 @@ def sbuild_package(release, component, control_file, arch, gpg_sign_author):
     if not os.path.exists(destination_dir):
         os.makedirs(destination_dir, 0755)                        
     print "Building: %s" % dsc_file
-    log_name = "%s_%s_%s.log" % (control_file['Source'] \
-        , datetime.datetime.now().strftime("%Y_%M_%d_%m_%s"), arch)        
+    log_name = "%s_%s_%s.log" % (name_version \
+        , datetime.datetime.now().strftime("%Y_%m_%d_%M_%S"), arch)        
     start_time = time.time()
     if arch == "i386":
         arch_str = "i386 -A"
@@ -188,7 +191,7 @@ def sbuild_package(release, component, control_file, arch, gpg_sign_author):
         for arch_str in arch_list:
             # We really need the "./" because we have no base dir
             arch_changes = "./%s_%s.changes" % (name_version,  arch_str)
-            report_title = "Build: %s/%s/%s (%s) %s\n" \
+            report_title = "Build for %s/%s/%s (%s) %s\n" \
                 % (release, component, name_version, arch, "FAILED")
             if os.path.exists(arch_changes):
                 changes_file = DebianControlFile(arch_changes)
@@ -213,7 +216,7 @@ def sbuild_package(release, component, control_file, arch, gpg_sign_author):
                     changes_file.remove()
     else:
         status = "FAILED"
-    report_title = "Build: %s/%s/%s (%s) %s\n" \
+    report_title = "Build for %s/%s/%s (%s) %s\n" \
         % (release, component, name_version, arch, status)
     report_msg += "\nElapsed Time: %s second(s)\n" % elapsed_time        
     report_msg += "Log file: %s%s\n" %  (base_url,  log_filename)

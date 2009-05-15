@@ -16,13 +16,11 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #  --------------------------------------------------------------------
 """
-  This script will check the ftp incoming directory for debian source
-  packages. 
-  When *_source.changes is found, it's contents are verified and
-  the files are moved to the pre_build queue.
+  This script will check the post_build directory
+  When *_.changes is found, it's contents are verified and
+  the files are included in the testing_repository
   
-  The expected structure is ftp_incoming_dir/release/component 
-    eg: /home/ftp/incoming/jaunty/apps
+  The expected structure is post_build dir/release/component 
   
   Files will be verified with the following rules
 		...		
@@ -43,36 +41,26 @@ config = ConfigObj(config_file)
 
 # Load configuration
 try:
-	archive_admin_email = config['archive_admin_email']
-	ftp_incoming_dir = config['ftp_incoming_dir']
-	pre_build_dir = config['pre_build_dir']
+	archive_admin_email = config['archive_admin_email']	
+	post_build_dir = config['post_build_dir']
 except Exception:
 	print "Configuration error"
 	print `sys.exc_info()[1]`
 	sys.exit(3)
 
-# Clean up all files older than 24h
-CLEANUP_TIME = 24*3600
-
 Log = Logger()	
 
-def check_source_changes(release, component, filename):
+def check_changes(release, component, filename):
     """	
-    Check a _source.changes file and proceed as described in the script
-    action flow . 
+    Check a _.changes file and include it into the repository
     """
     target_mails = [archive_admin_email]
-    Log.print_("Checking %s/%s/%s" % (release, component, filename))	
+    Log.print_("Including %s/%s/%s" % (release, component, filename))	
         
     source_dir = "%s/%s/%s" \
-        % (ftp_incoming_dir, release, component)
-    full_pre_build_dir = "%s/%s/%s" \
-        % (pre_build_dir, release, component)
+        % (ftp_post_build_dir, release, component)
     changes_file = "%s/%s" % (source_dir, filename)
                 
-    if not os.path.exists(full_pre_build_dir):
-        os.makedirs(full_pre_build_dir, 0755)
-
     control_file = DebianControlFile("%s/%s" % (source_dir, filename))
 
     gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
@@ -82,10 +70,12 @@ def check_source_changes(release, component, filename):
         Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
         return
 
+    name = control_file['Source'] 
+    version = control_file.version()
     name_version = "%s_%s" % (control_file['Source'] \
         , control_file.version())
 
-    report_title = "Upload for %s/%s/%s FAILED\n" \
+    report_title = "Include on testing for %s/%s/%s FAILED\n" \
         % (release, component, name_version)
     report_msg = "File: %s/%s/%s\n" % (release, component, filename)
     report_msg  += '-----------------\n'
@@ -93,27 +83,6 @@ def check_source_changes(release, component, filename):
     target_mails.append(gpg_sign_author)
     report_msg  += "Signed By: %s\n\n" % gpg_sign_author
 
-    # Check if orig_file is available
-    orig_file = "%s_%s.orig.tar.gz" % (control_file['Source'], \
-        control_file.upstream_version())
-
-    if not orig_file:		
-        Log.print_("FIXME: This should never happen")
-        # FIXME: This should never happen but we should send a message
-        # anyway
-        return	
-			
-    if not os.path.exists("%s/%s" % (source_dir, orig_file)):
-        pre_build_orig = "%s/%s" % (full_pre_build_dir, orig_file)
-        if not os.path.exists(pre_build_orig):			
-            report_msg += "ERROR: Missing %s for %s\n" \
-                % (orig_file, changes_file)
-            Log.print_(report_msg)
-            send_mail_message(target_mails, report_title, report_msg)
-            return
-        else:
-            Log.print_('No orig.tar.gz, using %s ' % pre_build_orig)		
-        
     # Get list of files described on the changes	
     report_msg += "List of files:\n"	
     report_msg += "--------------\n"
@@ -121,23 +90,12 @@ def check_source_changes(release, component, filename):
     for file_info in file_list:
         report_msg += "%s (%s) MD5: %s \n" \
             % (file_info.name, file_info.size, file_info.md5sum)		
-    try:
-        control_file.move(full_pre_build_dir)
-    except DebianControlFile.MD5Error, e:
-        report_msg = "MD5 mismatch: Expected %s, got %s, file: %s\n" \
-            % (e.expected_md5, e.found_md5, e.name)	
-        Log.print_(report_msg)
-        send_mail_message(target_mails, report_title, report_msg)
-        return
-    except DebianControlFile.FileNotFoundError, e:
-        report_msg = "File not found: %s" % (e.filename)			
-        Log.print_(report_msg)
-        send_mail_message(target_mails, report_title, report_msg)
-        return			
-    finally:
-        control_file.remove()
-        
-    report_title = "Upload for %s/%s/%s SUCCESSFUL\n" \
+            
+    if(filename.endswith("_source.changes")):
+            os.system("reprepro removesrc %s %s" % (name,  version))
+        rc = os.system("reprepro include -C %s %s-testing %s"
+                  % (component,  release, changes_file))        
+    report_title = "Include on testing %s/%s/%s SUCCESSFUL\n" \
         % (release, component, name_version)
     Log.print_(report_title)
     send_mail_message(target_mails, report_title, report_msg)	
