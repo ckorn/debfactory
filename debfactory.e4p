@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Project SYSTEM "Project-4.6.dtd">
+<!-- eric4 project file for project debfactory -->
+<!-- Saved: 2009-05-15, 17:00:34 -->
+<!-- Copyright (C) 2009 ,  -->
+<Project version="4.6">
+  <Language></Language>
+  <ProgLanguage mixed="0">Python</ProgLanguage>
+  <ProjectType>Console</ProjectType>
+  <Description></Description>
+  <Version>0.1</Version>
+  <Author></Author>
+  <Email></Email>
+  <Sources>
+    <Source>bin/dpkg.py</Source>
+    <Source>bin/schroot_build.py</Source>
+    <Source>bin/dpkg_control.py</Source>
+    <Source>bin/localaux.py</Source>
+    <Source>bin/all_in_one.py</Source>
+    <Source>bin/move_to_ready.py</Source>
+    <Source>bin/build_package.py</Source>
+    <Source>bin/lockfile.py</Source>
+    <Source>bin/check_incoming.py</Source>
+    <Source>bin/check_pre_build.py</Source>
+    <Source>bin/incoming_check.py</Source>
+    <Source>bin/import_uploaders_gpg_keys.py</Source>
+    <Source>bin/prebuild_check.py</Source>
+    <Source>bin/update_create.py</Source>
+    <Source>bin/builddep.py</Source>
+    <Source>etc/debfactory.conf</Source>
+    <Source>etc/debfactory.conf.sample</Source>
+  </Sources>
+  <Forms>
+  </Forms>
+  <Translations>
+  </Translations>
+  <Resources>
+  </Resources>
+  <Interfaces>
+  </Interfaces>
+  <Others>
+  </Others>
+  <Vcs>
+    <VcsType>None</VcsType>
+  </Vcs>
+  <FiletypeAssociations>
+    <FiletypeAssociation pattern="*.pyw" type="SOURCES" />
+    <FiletypeAssociation pattern="*.idl" type="INTERFACES" />
+    <FiletypeAssociation pattern="*.py" type="SOURCES" />
+    <FiletypeAssociation pattern="*.ptl" type="SOURCES" />
+  </FiletypeAssociations>
+</Project>

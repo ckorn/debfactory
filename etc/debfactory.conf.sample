@@ -1,10 +1,19 @@
 # Example configuration file for the debfactory tools
 
 # This email will receive upload status the messages
-upload_status_email = admin@somewhere.com
+archive_admin_email = admin@somewhere.com
 
 # FTP incoming directory
 ftp_incoming_dir = /home/ftp/incoming
 
 # PRE build directory
 pre_build_dir = /build/pre_build
+
+# POST build directory
+post_build_dir = /build/post_build
+
+# Logs directory
+logs_dir = /build/logs
+
+# Base url
+base_url = "http://abs.getdeb.net"

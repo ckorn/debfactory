@@ -33,18 +33,21 @@ class DebianControlFile:
             self.size = size
             self.md5sum = md5sum
             self.name = name
-			
-    class MissingBaseDirError(Exception):
-        def __init__(self, value):
-            self.value = value
-
+            
     class FileNotFoundError(Exception):
+        """ 
+        A file operation was requested an a listed file was not found
+        """
         def __init__(self, filename):
             self.filename = filename
         def __str__(self):
             return repr(self.filename)
 
     class MD5Error(Exception):
+        """
+        The MD5 checksum verification failed during a file copy/move
+        operation.
+        """
         def __init__(self, expected_md5, found_md5, name):
             self.expected_md5 = expected_md5
             self.found_md5 = found_md5
@@ -57,7 +60,7 @@ class DebianControlFile:
         self._filename = filename		
         if filename is not None:
             self.load_contents(filename)
-			
+            
     def load_contents(self, filename=None, contents=None):
         """
         Opens the control file and load it's contents into the data
@@ -66,9 +69,6 @@ class DebianControlFile:
         self._data = []
         self._deb_info = {}
         if filename is not None:
-            if filename[0] != "/":
-                raise self.MissingBaseDirError('Needs full pathname')
-                return
             self._filename = filename
             control_file = open(self._filename, 'r')
             self._data = control_file.readlines()
@@ -78,7 +78,6 @@ class DebianControlFile:
         ast_data = []
         deb_info = {}
         for line in self._data:
-			#print "Line: %s" % line
 			if not line:
 				continue
 			if line == '-----BEGIN PGP SIGNATURE-----':
@@ -108,13 +107,28 @@ class DebianControlFile:
 				file_parts[len(file_parts)-1])
 			file_info_list.append(file_info)
 		return file_info_list
+ 
+    def version(self):
+        """ 
+        Returns the package version after removing the epoch part
+        """
+        version = self['Version']
+        epoch, sep, version = version.partition(":")
+        return version or epoch
+           
+    def upstream_version(self):
+        """ 
+        Returns the upstream version contained on the Version field
+        """        
+        ups_version, sep, debversion = self.version().partition("-")
+        return ups_version
 	
     def verify_gpg(self, keyring, verbose=False):
-		"""
-		Verify the file GPG signature using the specified keyring file.
-		Returns:
-			signature author on success
-			None on failure
+		"""Verifies the file GPG signature using the specified keyring
+        file.
+        
+        @param keyring: they keyring to be used for verification
+		@return: the signature author or None
 		"""
 		gpg_cmd = "LANG=C gpg --no-options --no-default-keyring "\
 			"--keyring %s --verify --logger-fd=1 %s" \
@@ -131,16 +145,16 @@ class DebianControlFile:
 					dummy, sign_author, dummy = line.split('"')	
 		return sign_author
 		
-    def verify_md5sum(self, basedir=None):
+    def verify_md5sum(self, source_dir=None):
 		"""
 		Verify the MD5 checksum for all the files
 		Returns:
 			None: on success
 			(expected_md5, found_md5, filename): on failure
 		"""
-		basedir = basedir or os.path.dirname(self._filename)
+		source_dir = source_dir or os.path.dirname(self._filename)
 		for file in self.files_list():
-			full_filename = "%s/%s" % (basedir, file.name)
+			full_filename = "%s/%s" % (source_dir, file.name)
 			if not os.path.exists(full_filename):
 				return (file.md5sum, "FILE_NOT_FOUND", file.name)
 			else:
@@ -150,13 +164,13 @@ class DebianControlFile:
 					return (file.md5sum, found_md5, file.name)
 		return None	
         
-    def copy(self, targetdir=None, sourcedir=None, md5check=True):
+    def copy(self, destination_dir=None, source_dir=None, md5check=True):
         """
         Copies the files listed on the control file
         The control file is also copied at the end
         """
-        sourcedir = sourcedir or os.path.dirname(self._filename)
-        if not os.path.isdir(targetdir):
+        source_dir = source_dir or os.path.dirname(self._filename)
+        if not os.path.isdir(destination_dir):
             raise Exception
             return
             
@@ -164,8 +178,8 @@ class DebianControlFile:
         file_list.append(self.FileInfo(None, None, \
             os.path.basename(self._filename)))
         for file in file_list:
-            source_filename = "%s/%s" % (sourcedir, file.name)
-            target_filename = "%s/%s" % (targetdir, file.name)
+            source_filename = "%s/%s" % (source_dir, file.name)
+            target_filename = "%s/%s" % (destination_dir, file.name)
             if not os.path.exists(source_filename):
                 raise self.FileNotFoundError(source_filename)
                 return
@@ -178,7 +192,7 @@ class DebianControlFile:
                     return        
         return None
 
-    def move(self, targetdir=None, sourcedir=None, md5check=True):
+    def move(self, destination_dir=None, source_dir=None, md5check=True):
         """
         Moves the files listed on the control file
         The control file is also moved at the end
@@ -186,8 +200,8 @@ class DebianControlFile:
 			None: on success
 			(expected_md5, found_md5, filename): on failure
         """
-        sourcedir = sourcedir or os.path.dirname(self._filename)
-        if not os.path.isdir(targetdir):
+        source_dir = source_dir or os.path.dirname(self._filename)
+        if not os.path.isdir(destination_dir):
             raise Exception
             return
 
@@ -195,8 +209,8 @@ class DebianControlFile:
         file_list.append(self.FileInfo(None, None, \
             os.path.basename(self._filename)))
         for file in file_list:
-            source_filename = "%s/%s" % (sourcedir, file.name)
-            target_filename = "%s/%s" % (targetdir, file.name)
+            source_filename = "%s/%s" % (source_dir, file.name)
+            target_filename = "%s/%s" % (destination_dir, file.name)
             if not os.path.exists(source_filename):
                 raise self.FileNotFoundError(source_filename)
                 return
@@ -212,20 +226,20 @@ class DebianControlFile:
                     
         return None
 
-    def remove(self, basedir=None):
+    def remove(self, source_dir=None):
         """
         Removes all files listed and the control file itself
         Returns:
 	        None: on success
 	        (expected_md5, found_md5, filename): on failure
         """
-        basedir = basedir or os.path.dirname(self._filename)
+        source_dir = source_dir or os.path.dirname(self._filename)
         
         file_list = self.files_list()
         file_list.append(self.FileInfo(None, None, \
             os.path.basename(self._filename)))
         for file in file_list:
-            full_filename = "%s/%s" % (basedir, file.name)
+            full_filename = "%s/%s" % (source_dir, file.name)
             if os.path.exists(full_filename):
 			    os.unlink(full_filename)
 
