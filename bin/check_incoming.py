@@ -61,7 +61,7 @@ def check_source_changes(release, component, filename):
     Check a _source.changes file and proceed as described in the script
     action flow . 
     """
-    target_mails = [archive_admin_email]
+    target_mails = archive_admin_email.split(",")
     Log.print_("Checking %s/%s/%s" % (release, component, filename))	
         
     source_dir = "%s/%s/%s" \
@@ -90,7 +90,7 @@ def check_source_changes(release, component, filename):
     report_msg = "File: %s/%s/%s\n" % (release, component, filename)
     report_msg  += '-----------------\n'
 
-    target_mails.append(gpg_sign_author)
+    target_mails= [gpg_sign_author, target_mails]    
     report_msg  += "Signed By: %s\n\n" % gpg_sign_author
 
     # Check if orig_file is available

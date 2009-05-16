@@ -64,14 +64,16 @@ def send_email(toaddrs, message):
     server.quit()
 	
 def send_mail_message(destination, subject, body):
-	"""
-	Sends a mail message
-	"""
-	
-	message = "Subject: %s\n\n" % subject
-	message += body
-	if type(destination) is list:
-		for dest in destination:
-			send_email(dest, message)		
-	else:
-		send_email(destination, message)		
+    """
+    Sends a mail message
+    """
+
+    if type(destination) is list:
+        for dest in destination:
+            message = "Subject: %s\n" % subject
+            message += "To: %s\n" % dest
+            message += "\n\n"
+            message += body            
+            send_email(dest, message)		
+    else:
+        send_email(destination, message)		

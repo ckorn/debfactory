@@ -103,11 +103,15 @@ def check_source_changes(release, component, filename):
         % (pre_build_dir, release, component)	    
     destination_dir = "/tmp/build-%s-%s" % (release, component)    
     changes_file = "%s/%s" % (source_dir, filename)
-    
+
+    # Remove previous failed status
+    if os.path.exists('%s.failed' % changes_file):
+        os.unlink('%s.failed' % changes_file)
+            
     if not os.path.exists(destination_dir):
         os.makedirs(destination_dir, 0755)
 
-    control_file = DebianControlFile("%s/%s" % (source_dir, filename))
+    control_file = DebianControlFile(changes_file)
     gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
         +'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
 
@@ -142,10 +146,6 @@ def check_source_changes(release, component, filename):
         send_mail_message(target_mails, report_title, report_msg)
         control_file.remove()
         return
-    
-    # Remove previous failed status
-    if os.path.exists('%s.failed' % changes_file):
-        os.unlink('%s.failed' % changes_file)
       
     # Before building we move the source to the post_build queue anyway
     full_post_build_dir = "%s/%s/%s" % (post_build_dir,  release,  component)        
@@ -153,16 +153,17 @@ def check_source_changes(release, component, filename):
 
     version = control_file.version()     
     os.chdir(destination_dir)
-    i386_rc = sbuild_package(release, component, control_file, 'i386',  gpg_sign_author)
+    i386_rc = sbuild_package(release, component, control_file, 'i386')
     if i386_rc == 0:
-        sbuild_package(release, component, control_file, 'amd64',  gpg_sign_author) 
+        sbuild_package(release, component, control_file, 'amd64') 
     else:
         shutil.move(changes_file ,  "%s.failed" %  changes_file)
     
-def sbuild_package(release, component, control_file, arch, gpg_sign_author):
+def sbuild_package(release, component, control_file, arch):
     """Attempt to build package using sbuild """        
     
-    target_mails = [archive_admin_email,  gpg_sign_author]      
+    target_mails = archive_admin_email.split(",")
+    target_mails.append(control_file['Changed-By'])    
     name_version = "%s_%s" % (control_file['Source']
         , control_file.version())
     dsc_file = "%s.dsc" % name_version

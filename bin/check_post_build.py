@@ -54,21 +54,24 @@ def check_changes(release, component, filename):
     """	
     Check a _.changes file and include it into the repository
     """
-    target_mails = [archive_admin_email]
+    target_mails = archive_admin_email.split(",")
     Log.print_("Including %s/%s/%s" % (release, component, filename))	
         
     source_dir = "%s/%s/%s" \
-        % (ftp_post_build_dir, release, component)
+        % (post_build_dir, release, component)
     changes_file = "%s/%s" % (source_dir, filename)
-                
-    control_file = DebianControlFile("%s/%s" % (source_dir, filename))
+                    
+    # Remove previous failed status
+    if os.path.exists('%s.failed' % changes_file):
+        os.unlink('%s.failed' % changes_file)
+    control_file = DebianControlFile(changes_file)
 
-    gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
-        +'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
-
-    if not gpg_sign_author:
-        Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
-        return
+    #gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
+    #    +'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
+    #
+    #if not gpg_sign_author:
+    #    Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
+    #    return
 
     name = control_file['Source'] 
     version = control_file.version()
@@ -80,8 +83,8 @@ def check_changes(release, component, filename):
     report_msg = "File: %s/%s/%s\n" % (release, component, filename)
     report_msg  += '-----------------\n'
 
-    target_mails.append(gpg_sign_author)
-    report_msg  += "Signed By: %s\n\n" % gpg_sign_author
+    target_mails.append(control_file['Changed-By'])    
+    report_msg  += "Signed By: %s\n\n" % control_file['Changed-By']
 
     # Get list of files described on the changes	
     report_msg += "List of files:\n"	
@@ -90,22 +93,34 @@ def check_changes(release, component, filename):
     for file_info in file_list:
         report_msg += "%s (%s) MD5: %s \n" \
             % (file_info.name, file_info.size, file_info.md5sum)		
-            
+    
+    # Remove all packages related to source package
     if(filename.endswith("_source.changes")):
-            os.system("reprepro removesrc %s %s" % (name,  version))
-        rc = os.system("reprepro include -C %s %s-testing %s"
-                  % (component,  release, changes_file))        
-    report_title = "Include on testing %s/%s/%s SUCCESSFUL\n" \
-        % (release, component, name_version)
-    Log.print_(report_title)
-    send_mail_message(target_mails, report_title, report_msg)	
+        os.system("reprepro removesrc %s-getdeb-testing %s %s" 
+            % (release, name,  version))        
+    command = "reprepro -C %s include %s-getdeb-testing %s" \
+        % (component,  release, changes_file)
+    (rc, output) = commands.getstatusoutput(command)
+    print output
+    report_msg += output
+    if rc==0:
+        status = "SUCCESSFUL"
+        control_file.remove()
+    else:
+        status = "FAILED"
+        
+    report_title = "Included on testing %s/%s/%s %s\n" \
+        % (release, component, name_version, status)    
+    Log.print_(status)
+    Log.print_(report_title)  
+    send_mail_message(target_mails, report_title, output)    
 
-def check_incoming_dir():
+def check_post_build_dir():
 	"""
 	Check the ftp incoming directory for release directories
 	"""	
 	file_list = glob.glob("%s/*" \
-		% (ftp_incoming_dir))
+		% (post_build_dir))
 	for file in file_list:
 		if os.path.isdir(file):
 			release = os.path.basename(file)
@@ -116,7 +131,7 @@ def check_release_dir(release):
 	Check a release directory for components
 	"""
 	file_list = glob.glob("%s/%s/*" \
-		% (ftp_incoming_dir, release))	
+		% (post_build_dir, release))	
 	for file in file_list:
 		if os.path.isdir(file):
 			component = os.path.basename(file)
@@ -125,25 +140,21 @@ def check_release_dir(release):
 def check_release_component_dir(release, component):
 	""" 
 	Check a release/component directory
-		*_source.changes will triger a verification/move action
-		files older than CLEANUP_TIME will be removed
 	"""
 	Log.log("Checking %s/%s" % (release, component))
-	file_list = glob.glob("%s/%s/%s/*" \
-		% (ftp_incoming_dir, release, component))
+	file_list = glob.glob("%s/%s/%s/*.changes" \
+		% (post_build_dir, release, component))
 		
+    # First we process _source.changes to make sure existing packages
+    # will be deleted from the repository before the binaries include
 	for fname in file_list:
-		if not os.path.exists(fname): # File was removed ???
-			continue
 		if fname.endswith("_source.changes"):
-			check_source_changes(release, component, os.path.basename(fname))	
-			# There could be an error, remove it anyway
-			if os.path.exists(fname):
-				os.unlink(fname)
-		else:
-			if time.time() - os.path.getmtime(fname) > CLEANUP_TIME:
-				print "Removing old file: %s", fname
-				os.unlink(fname)
+			check_changes(release, component, os.path.basename(fname))
+            
+	for fname in file_list:
+		if not fname.endswith("_source.changes"):
+			check_changes(release, component, os.path.basename(fname))
+                        
 	Log.log("Done")
 	
 def main():
@@ -161,7 +172,7 @@ def main():
 		return
 	
 	# Check and process the incoming directoy
-	check_incoming_dir()
+	check_post_build_dir()
 	
 if __name__ == '__main__':
 	try:
