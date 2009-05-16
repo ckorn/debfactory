@@ -63,7 +63,7 @@ pgrep.close()
 dummy, change_author = change_author_line.split(":")
 pcheck=os.popen('gpg --verify --logger-fd=1 '+package)
 lines = pcheck.readlines()
-sign_author = ""
+sign_author = None
 for line in lines:
   if line.find("gpg: Good signature from") != -1:
       dummy, sign_author, dummy = line.split('"')
