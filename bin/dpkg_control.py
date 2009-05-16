@@ -114,7 +114,11 @@ class DebianControlFile:
         """
         version = self['Version']
         epoch, sep, version = version.partition(":")
-        return version or epoch
+        version = version or epoch
+        version_list = version.split("-")
+        version_list.pop()        
+        version = '-'.join(version_list)
+        return version 
            
     def upstream_version(self):
         """ 
@@ -292,6 +296,7 @@ bDAAn0Q2qf3no3vO1piw5uhwMbIul6Kb
     control_file.load_contents(contents=sample_control_file)
     print "------- Testing sample control file -----"
     print "Source: %s" % control_file['Source']
+    print "Version: %s" % control_file.version()
     print "Files:"
     for file in control_file.files_list():
 		print "name: %s, size: %s, md5sum: %s" % (file.name, file.size, file.md5sum)        
