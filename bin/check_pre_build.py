@@ -118,7 +118,7 @@ def check_source_changes(release, component, filename):
     if not gpg_sign_author:
         Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
         return
-        
+            
     report_title = "%s/%s/%s build FAILED\n" \
         % (release, component, filename)
         
@@ -147,8 +147,13 @@ def check_source_changes(release, component, filename):
         control_file.remove()
         return
       
+    
+    full_post_build_dir = "%s/%s/%s" % (post_build_dir,  release \
+        , component)
+    if not os.path.exists(full_post_build_dir):
+        os.makedirs(full_post_build_dir, 0755)
+
     # Before building we move the source to the post_build queue anyway
-    full_post_build_dir = "%s/%s/%s" % (post_build_dir,  release,  component)        
     control_file.move(full_post_build_dir)        
 
     version = control_file.version()     
