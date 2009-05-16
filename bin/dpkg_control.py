@@ -114,18 +114,16 @@ class DebianControlFile:
         """
         version = self['Version']
         epoch, sep, version = version.partition(":")
-        version = version or epoch
-        version_list = version.split("-")
-        version_list.pop()        
-        version = '-'.join(version_list)
-        return version 
+        return version or epoch
            
     def upstream_version(self):
         """ 
         Returns the upstream version contained on the Version field
-        """        
-        ups_version, sep, debversion = self.version().partition("-")
-        return ups_version
+        """                
+        version_list = self.version().split("-")
+        version_list.pop()        
+        version = '-'.join(version_list)
+        return version
 	
     def verify_gpg(self, keyring, verbose=False):
 		"""Verifies the file GPG signature using the specified keyring
@@ -266,7 +264,7 @@ Format: 1.0
 Source: pybackpack
 Binary: pybackpack
 Architecture: all
-Version: 0.5.6-1
+Version: 10.9.2-1-1~getdeb1
 Maintainer: Andy Price <andy@andrewprice.me.uk>
 Uploaders: Python Applications Packaging Team <python-apps-team@lists.alioth.debian.org>
 Homepage: http://andrewprice.me.uk/projects/pybackpack/
@@ -297,6 +295,7 @@ bDAAn0Q2qf3no3vO1piw5uhwMbIul6Kb
     print "------- Testing sample control file -----"
     print "Source: %s" % control_file['Source']
     print "Version: %s" % control_file.version()
+    print "Upstream Version: %s" % control_file.upstream_version()
     print "Files:"
     for file in control_file.files_list():
 		print "name: %s, size: %s, md5sum: %s" % (file.name, file.size, file.md5sum)        
