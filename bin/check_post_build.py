@@ -116,7 +116,7 @@ def check_changes(release, component, filename):
         % (release, component, name_version, status)    
     Log.print_(status)
     Log.print_(report_title)  
-    message(target_emails, report_title, output)    
+    send_mail_message(target_emails, report_title, output)    
 
 def check_post_build_dir():
 	"""
