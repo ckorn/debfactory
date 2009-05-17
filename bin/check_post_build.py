@@ -54,7 +54,7 @@ def check_changes(release, component, filename):
     """	
     Check a _.changes file and include it into the repository
     """
-    target_mails = archive_admin_email.split(",")
+    target_emails = archive_admin_email.split(",")
     Log.print_("Including %s/%s/%s" % (release, component, filename))	
         
     source_dir = "%s/%s/%s" \
