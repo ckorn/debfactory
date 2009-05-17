@@ -90,7 +90,7 @@ def check_source_changes(release, component, filename):
     report_msg = "File: %s/%s/%s\n" % (release, component, filename)
     report_msg  += '-----------------\n'
 
-    target_mails= [gpg_sign_author, target_mails]    
+    target_mails.append(gpg_sign_author)    
     report_msg  += "Signed By: %s\n\n" % gpg_sign_author
 
     # Check if orig_file is available

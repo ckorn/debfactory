@@ -83,7 +83,7 @@ def check_changes(release, component, filename):
     report_msg = "File: %s/%s/%s\n" % (release, component, filename)
     report_msg  += '-----------------\n'
 
-    target_mails.append(control_file['Changed-By'])    
+    #target_mails.append(control_file['Changed-By'])    
     report_msg  += "Signed By: %s\n\n" % control_file['Changed-By']
 
     # Get list of files described on the changes	
@@ -97,7 +97,8 @@ def check_changes(release, component, filename):
     # Remove all packages related to source package
     if(filename.endswith("_source.changes")):
         os.system("reprepro removesrc %s-getdeb-testing %s %s" 
-            % (release, name,  version))        
+            % (release, name,  version))    
+    # Include the package
     command = "reprepro -C %s include %s-getdeb-testing %s" \
         % (component,  release, changes_file)
     (rc, output) = commands.getstatusoutput(command)
@@ -108,12 +109,14 @@ def check_changes(release, component, filename):
         control_file.remove()
     else:
         status = "FAILED"
+        shutil.move(changes_file, "%s.failed" % changes_file)
+        
         
     report_title = "Included on testing %s/%s/%s %s\n" \
         % (release, component, name_version, status)    
     Log.print_(status)
     Log.print_(report_title)  
-    #send_mail_message(target_mails, report_title, output)    
+    message(target_emails, report_title, output)    
 
 def check_post_build_dir():
 	"""
