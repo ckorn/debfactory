@@ -74,7 +74,7 @@ def check_source_changes(release, component, filename):
         os.makedirs(full_pre_build_dir, 0755)
 
     control_file = DebianControlFile("%s/%s" % (source_dir, filename))
-
+    
     gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
         +'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
 
@@ -84,6 +84,18 @@ def check_source_changes(release, component, filename):
 
     name_version = "%s_%s" % (control_file['Source'] \
         , control_file.version())
+
+    package_release = control_file['Distribution']
+    if package_release != release:
+        report_title = "Upload for %s/%s/%s FAILED\n" \
+            % (release, component, name_version)        
+        report_msg = "The release %s on debian/changelog does noth match"\
+            " the target %s\n" % (package_release, release)
+        Log.print_(report_msg)
+        Log.print_(report_title)
+        send_mail_message(target_mails, report_title, report_msg)
+        return
+        
 
     report_title = "Upload for %s/%s/%s FAILED\n" \
         % (release, component, name_version)

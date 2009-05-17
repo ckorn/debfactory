@@ -91,7 +91,6 @@ def send_mail_message(destination, subject, body):
     if type(destination) is list:        
         destination = uniq(destination)
         for dest in destination:
-            print dest            
             message = "Subject: %s\n" % subject            
             message += "To: %s\n" % dest
             message += "\n\n"
