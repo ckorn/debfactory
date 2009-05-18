@@ -33,6 +33,7 @@ ready_dir=os.environ['HOME']+'/abs/post_build'
 logs_url='http://abs.getdeb.net/build_log'
 ready_url='http://abs.getdeb.net/post_build'
 prebuilddir = os.environ['HOME']+'/abs/pre_build'
+gpg_ops = '--no-options --no-default-keyring --keyring '+os.environ['HOME']+'/debfactory/keyrings/uploaders.gpg '
 
 os.putenv('LANG', 'C') # We use system commands reply check, use a reliable language
 
@@ -61,7 +62,7 @@ change_author_line=pgrep.readline().strip('\r\n')
 pgrep.close()
 
 dummy, change_author = change_author_line.split(":")
-pcheck=os.popen('gpg --verify --logger-fd=1 '+package)
+pcheck=os.popen('gpg '+gpg_ops+' --verify --logger-fd=1 '+package)
 lines = pcheck.readlines()
 sign_author = None
 for line in lines:
