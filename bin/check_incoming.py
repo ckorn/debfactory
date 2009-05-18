@@ -196,7 +196,7 @@ def check_release_component_dir(release, component):
 				os.unlink(fname)
 		else:
 			if time.time() - os.path.getmtime(fname) > CLEANUP_TIME:
-				print "Removing old file: %s", fname
+				print "Removing old file: %s" % fname
 				os.unlink(fname)
 	Log.log("Done")
 	
