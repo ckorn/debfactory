@@ -68,6 +68,7 @@ class DebianControlFile:
         """
         self._data = []
         self._deb_info = {}
+        last_data = []
         if filename is not None:
             self._filename = filename
             control_file = open(self._filename, 'r')
