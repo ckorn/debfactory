@@ -56,10 +56,9 @@ class DebianControlFile:
             return repr(self.value1, self.value2, self.value3)
 
 
-    def __init__(self, filename=None):
+    def __init__(self, filename=None, contents=None):
         self._filename = filename		
-        if filename is not None:
-            self.load_contents(filename)
+        self.load_contents(filename, contents)
             
     def load_contents(self, filename=None, contents=None):
         """

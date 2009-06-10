@@ -17,3 +17,7 @@ logs_dir = /build/logs
 
 # Base url
 base_url = "http://abs.getdeb.net"
+
+# DB url
+# The db_url is only required for the apt2sqlp.py utility
+db_url = "mysql://user:password@localhost/apt_portal"
