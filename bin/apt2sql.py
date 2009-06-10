@@ -52,29 +52,31 @@ except Exception:
     
 Log = Logger()    
 
-repository = 'http://archive.getdeb.net/ubuntu jaunty-getdeb-testing apps'
 
-def index():    
+def import_repository(repository):
     # Get the base release file to check for available architectures
-    (rel_archive, rel_release, rel_component) = repository.split()    
-    main_release_file = "%s/dists/%s/Release" % (rel_archive, rel_release)
+    Log.log("Importing repository: %s" % repository)
+    (rep_archive, rep_release, rep_component) = repository.split()    
+    main_release_file = "%s/dists/%s/Release" % (rep_archive, rep_release)
     Log.log("Downloading %s" % main_release_file)
     try:
         f = urllib2.urlopen(main_release_file)
     except HTTPError, e:
-        return "%s : %s" % (e.code, main_release_file)    
+        print "Error %s : %s" % (e.code, main_release_file)    
+        return
     base_release = DebianControlFile(contents = f.read())    
     f.close()
     
     # Now let's import the Packages file for each architecture
     for arch in base_release['Architectures'].split():
         arch_release_file = "%s/dists/%s/%s/binary-%s/Release" \
-            % (rel_archive, rel_release, rel_component, arch)
+            % (rep_archive, rep_release, rep_component, arch)
         Log.log("Downloading %s" % arch_release_file)
         try:
             f = urllib2.urlopen(arch_release_file)
         except HTTPError, e:
-            return "%s : %s" % (e.code, arch_release_file)    
+            print "Error: %s : %s" % (e.code, arch_release_file)    
+            continue
         release = DebianControlFile()    
         release.load_contents(contents = f.read())
         f.close()
@@ -104,7 +106,7 @@ def index():
                 )
             pass
         packages_file = "%s/dists/%s/%s/binary-%s/Packages.gz" \
-            % (rel_archive, rel_release, rel_component, arch)
+            % (rep_archive, rep_release, rep_component, arch)
         import_packages_file(packagelist, packages_file)
 
 
@@ -128,29 +130,52 @@ def import_packages_file(packagelist, packages_file):
     data=f.read()
     f.close()
     os.unlink(tmpfile.name)
+    packages = []
     
     for package_info in data.split("\n\n"):
         if not package_info: # happens at the end of the file
-                return
+            continue
         control = DebianControlFile(contents = package_info)
-        package = control['Package']
+        package_name = control['Package']
         source = control['Source']
         version = control['Version']
         architecture = control['Architecture']
-        try:        
-            package = Package.query.filter_by( \
-                package = package, \
+        package = Package.query.filter_by( \
+                package = package_name, \
                 version = version, \
-                architecture = architecture).one()
-        except InvalidRequestError:
-            package = Package( \
-                package = package, \
+                architecture = architecture).first()
+        if not package:
+            Log.print_("Inserting %s %s %s %s" % (package_name, source \
+                , version, architecture))
+            package = Package( 
+                package = package_name, \
                 source = source, \
                 version = version, \
-                architecture = architecture)            
-            pass
-        package.lists.append(packagelist)
-                        
+                architecture = architecture)                     
+        # Create relation if needed
+        if not packagelist in package.lists:
+            Log.print_("Including %s -> %s" % (package, packagelist))
+            package.lists.append(packagelist)
+        # Add to in memory list to skip removal
+        packages.append("%s %s %s" % 
+            (package.package, package.version, package.architecture))            
+    # Remove all relations to packages which were not import
+    # on the loop above
+    must_remove = []
+    for package in packagelist.packages:
+        list_item = "%s %s %s" % (package.package, package.version \
+            , package.architecture)
+
+        try:
+            packages.remove(list_item)
+        except KeyError:
+            Log._print("Removing %s" % `package`)
+            must_remove.append(package)        
+    for package in must_remove:
+        packagelist.packages.remove(package)
+    session.commit()
+    
+    
 def main():
     parser = OptionParser()
     parser.add_option("-q", "--quiet",
@@ -163,7 +188,13 @@ def main():
         action="store_true", dest="sql_echo", default=False,
         help="echo the sql statements")                
     (options, args) = parser.parse_args()
+
     
+    if len(args) > 2:
+        repository = ' '.join(args)
+    else:
+        repository = 'http://www.getdeb.net/getdeb jaunty-getdeb-testing apps'
+        
     Log.verbose=options.verbose	    
     try:
         lock = LockFile("apt2sql")
@@ -172,10 +203,13 @@ def main():
         return
     metadata.bind = db_url        
     metadata.bind.echo = options.sql_echo    
-    setup_all(options.create_tables)
-        
-    index()
-    PackageList.query.all()
+    #setup_all(options.create_tables)
+    setup_all(True)
+    
+    import_repository(repository)
+    #PackageList.query.all()
+    #for p in Package.query.filter_by(package='pidgin').all():
+    #    print p.lists
 
 if __name__ == '__main__':
 	try:

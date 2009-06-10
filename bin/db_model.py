@@ -36,10 +36,15 @@ class PackageList(Entity):
     origin = Field(String(64), nullable=False)
     label = Field(String(64), nullable=False)
     architecture = Field(String(64), nullable=False)
-    description = Field(String(128), nullable=False)    
+    description = Field(String(128), nullable=True)    
     using_table_options(UniqueConstraint('archive', 'version',
-        'component', 'architecture'))
+        'component', 'architecture'))        
+    using_table_options(mysql_engine='InnoDB')
     packages = ManyToMany('Package')
+
+    def __repr__(self):
+            return '<PackageList "%s %s %s %s">' % (self.archive, \
+                self.version, self.component, self.architecture)
 
 
 class Package(Entity):
@@ -56,13 +61,15 @@ class Package(Entity):
     architecture = Field(String(64), nullable=False, index = True)
     using_table_options(UniqueConstraint('package', 'version'
         , 'architecture'))
+    using_table_options(mysql_engine='InnoDB')        
     lists = ManyToMany('PackageList')
 
+    def __repr__(self):
+            return '<Package "%s %s %s")>' % (self.package, \
+                self.version, self.architecture)
 
 
-
-
-
+setup_all()
 
 
         
