@@ -26,25 +26,28 @@ class PackageList(Entity):
     """
     Identifies a package list, there will be one row for each 
     "Packages" file, the uniqe key is:
-        archive+version+component+architecture
+        suite+version+component+architecture
     """
     using_options(tablename='packagelist')
     id = Field(Integer, primary_key=True)
-    archive = Field(String(64), nullable=False) 
+    origin = Field(String(64), nullable=False)
+    suite = Field(String(64), nullable=False) 
     version = Field(String(64), nullable=False)
     component = Field(String(64), nullable=False)
-    origin = Field(String(64), nullable=False)
-    label = Field(String(64), nullable=False)
-    architecture = Field(String(64), nullable=False)
-    description = Field(String(128), nullable=True)    
-    using_table_options(UniqueConstraint('archive', 'version',
+    architecture = Field(String(64), nullable=False)    
+    label = Field(String(64), nullable=False)    
+    description = Field(String(128), nullable=True)
+    date = Field(String(64), nullable=False)        
+    using_table_options(UniqueConstraint('suite', 'version',
         'component', 'architecture'))        
-    using_table_options(mysql_engine='InnoDB')
     packages = ManyToMany('Package')
+    using_table_options(mysql_engine='InnoDB')
+    
 
     def __repr__(self):
-            return '<PackageList "%s %s %s %s">' % (self.archive, \
-                self.version, self.component, self.architecture)
+            return '<PackageList "%s %s %s %s %s">' % (self.origin \
+                , self.suite, self.version, self.component \
+                , self.architecture)
 
 
 class Package(Entity):
@@ -61,8 +64,9 @@ class Package(Entity):
     architecture = Field(String(64), nullable=False, index = True)
     using_table_options(UniqueConstraint('package', 'version'
         , 'architecture'))
-    using_table_options(mysql_engine='InnoDB')        
     lists = ManyToMany('PackageList')
+    using_table_options(mysql_engine='InnoDB')        
+    
 
     def __repr__(self):
             return '<Package "%s %s %s")>' % (self.package, \

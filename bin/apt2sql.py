@@ -19,6 +19,16 @@
 #  This file provides several functions to handle debian packages
 #  control files.
 
+"""
+Usage:
+    apt2sql.py [--database mysql://user:password@localhost/apt2sql] \
+        [archive_root_url suite [component1[, component2] ]]
+        
+Example:
+    apt2sql.py http://archive.ubuntu.com/ubuntu jaunty
+    
+"""
+
 # sqlalchemy uses a deprecated module
 import warnings
 warnings.simplefilter("ignore",DeprecationWarning)
@@ -31,83 +41,84 @@ import zlib
 import gzip
 import tempfile
 from optparse import OptionParser
-from configobj import ConfigObj
 from urllib2 import Request, urlopen, URLError, HTTPError
 from localaux import *
 from db_model import *
 from dpkg_control import *
 from lockfile import *
 from sqlalchemy.exceptions import InvalidRequestError
-
-config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
-config = ConfigObj(config_file)
-
-# Load configuration
-try:
-	db_url = config['db_url']
-except Exception:
-	print "Configuration error"
-	print `sys.exc_info()[1]`
-	sys.exit(3)
     
-Log = Logger()    
+Log = Logger() 
 
-
-def import_repository(repository):
-    # Get the base release file to check for available architectures
-    Log.log("Importing repository: %s" % repository)
-    (rep_archive, rep_release, rep_component) = repository.split()    
-    main_release_file = "%s/dists/%s/Release" % (rep_archive, rep_release)
-    Log.log("Downloading %s" % main_release_file)
+def import_repository(archive_url, suite, requested_components \
+        , requested_architectures):
+    """
+    Import a repository into the dabase
+    """
+    # Get the base release file to check the list of available 
+    # architectures and components
+    Log.log("Importing repository: %s %s [%s] [%s]" \
+        % (archive_url, suite, requested_components or "all" \
+            , requested_architectures or "all"))
+    release_file = "%s/dists/%s/Release" % (archive_url, suite)
+    Log.log("Downloading %s" % release_file)
     try:
-        f = urllib2.urlopen(main_release_file)
-    except HTTPError, e:
-        print "Error %s : %s" % (e.code, main_release_file)    
-        return
-    base_release = DebianControlFile(contents = f.read())    
+        f = urllib2.urlopen(release_file)
+    except HTTPError, e:        
+        print "Error %s : %s" % (e.code, release_file)    
+        return 1
+    Release = DebianControlFile(contents = f.read())    
     f.close()
     
+    architectures = Release['Architectures'].split()
+    components = Release['Components'].split()
+    print "Available architectures:\n", architectures
+    print "Available components:\n", components
+    
+    # Check if the requested components are available
+    if requested_components:
+        for component in requested_components[:]:
+            if component not in components:
+                Log.print_("Requested an unavailable component %s" 
+                    % component)
+                return 2 
+
+    # Check if the requested architectures are available
+    if requested_architectures:
+        for architecture in requested_architectures[:]:
+            if architecture not in architectures:
+                Log.print_("Requested unavailable architecture" \
+                    , architecture)
+                return 2 
+                
+    components = requested_components or components
+    architectures = requested_architectures or architectures
+    version = Release['Version'] or suite
+    
     # Now let's import the Packages file for each architecture
-    for arch in base_release['Architectures'].split():
-        arch_release_file = "%s/dists/%s/%s/binary-%s/Release" \
-            % (rep_archive, rep_release, rep_component, arch)
-        Log.log("Downloading %s" % arch_release_file)
-        try:
-            f = urllib2.urlopen(arch_release_file)
-        except HTTPError, e:
-            print "Error: %s : %s" % (e.code, arch_release_file)    
-            continue
-        release = DebianControlFile()    
-        release.load_contents(contents = f.read())
-        f.close()
-        archive = release['Archive']
-        version = release['Version']
-        component = release['Component']        
-        origin = release['Origin']
-        label = release['Label']
-        architecture = release['Architecture']
-        description = release['Description']        
-        try:
-            packagelist = PackageList.query.filter_by( \
-                archive = archive, \
-                version = version, \
-                component = component, \
-                architecture = architecture).one()
-        # If we get "No rows returned for one()" insert it
-        except InvalidRequestError:
-            packagelist = PackageList( \
-                archive = archive, \
-                version = version, \
-                component = component, \
-                origin = release['Origin'], \
-                label = release['Label'], \
-                architecture = release['Architecture'], \
-                description = release['Description'], \
-                )
-            pass
-        packages_file = "%s/dists/%s/%s/binary-%s/Packages.gz" \
-            % (rep_archive, rep_release, rep_component, arch)
-        import_packages_file(packagelist, packages_file)
+    for arch in architectures:
+        for component in components:
+            packagelist = \
+                PackageList.query.filter_by( \
+                    suite = suite, \
+                    version = version, \
+                    component = component, \
+                    architecture = arch).first() \
+                or \
+                PackageList( \
+                    suite = suite, \
+                    version = version, \
+                    component = component, \
+                    origin = Release['Origin'], \
+                    label = Release['Label'], \
+                    architecture = arch, \
+                    description = Release['Description'], \
+                    date = Release['Date'] \
+                    )            
+            packages_file = "%s/dists/%s/%s/binary-%s/Packages.gz" \
+                % (archive_url, suite, component, arch)
+            import_packages_file(packagelist, packages_file)
+            packagelist = None
 
 
 def import_packages_file(packagelist, packages_file):
@@ -118,7 +129,9 @@ def import_packages_file(packagelist, packages_file):
     try:
         f = urllib2.urlopen(packages_file)
     except HTTPError, e:
-        return "%s : %s" % (e.code, packages_file)
+        session.rollback() # Rollback the suite insert
+        print "%s : %s" % (e.code, packages_file)
+        return -1
     data = f.read()
     f.close()      
     
@@ -159,7 +172,7 @@ def import_packages_file(packagelist, packages_file):
         # Add to in memory list to skip removal
         packages.append("%s %s %s" % 
             (package.package, package.version, package.architecture))            
-    # Remove all relations to packages which were not import
+    # Remove all relations to packages which were not imported
     # on the loop above
     must_remove = []
     for package in packagelist.packages:
@@ -174,26 +187,44 @@ def import_packages_file(packagelist, packages_file):
     for package in must_remove:
         packagelist.packages.remove(package)
     session.commit()
+    del packages
+    del data
     
     
 def main():
     parser = OptionParser()
+    parser.add_option("-d", "--database",
+        action = "store", type="string", dest="database",
+        help = "specificy the database URI\n\n" \
+        "Examples\n\n" \
+        "   mysql://user:password@localhost/apt2sql" \
+        "   sqlite://apt2sql" \
+        )    
     parser.add_option("-q", "--quiet",
-        action="store_false", dest="verbose", default=True,
-        help="don't print status messages to stdout")
-    parser.add_option("-t", "--create-tables",
-        action="store_true", dest="create_tables", default=False,
-        help="create the databas etables")        
+        action = "store_false", dest="verbose", default=True,
+        help = "don't print status messages to stdout")
     parser.add_option("-s", "--sql-echo",
-        action="store_true", dest="sql_echo", default=False,
-        help="echo the sql statements")                
+        action = "store_true", dest="sql_echo", default=False,
+        help = "echo the sql statements")
+    parser.add_option("-r", "--recreate-tables",
+        action = "store_true", dest="recreate_tables", default=False,
+        help = "recreate db tables")            
     (options, args) = parser.parse_args()
-
+    db_url = options.database or "sqlite:///apt2sql.db"
+    if len(args) < 2:
+        print "Usage: %0 " \
+            "archive_root_url suite [component1[, component2] ]" \
+            % args[0]
+        sys.exit(2)
     
+    archive_url = args[0]
+    suite = args[1]
+    components = None
+    architectures = None
     if len(args) > 2:
-        repository = ' '.join(args)
-    else:
-        repository = 'http://www.getdeb.net/getdeb jaunty-getdeb-testing apps'
+        components = args[2].split(",")    
+    if len(args) > 3:
+        architectures = args[3].split(",")    
         
     Log.verbose=options.verbose	    
     try:
@@ -201,15 +232,16 @@ def main():
     except LockFile.AlreadyLockedError:
         Log.log("Unable to acquire lock, exiting")
         return
+        
+    # We set the database engine here
     metadata.bind = db_url        
     metadata.bind.echo = options.sql_echo    
-    #setup_all(options.create_tables)
     setup_all(True)
-    
-    import_repository(repository)
-    #PackageList.query.all()
-    #for p in Package.query.filter_by(package='pidgin').all():
-    #    print p.lists
+    if options.recreate_tables:
+        drop_all()
+        setup_all(True)
+        
+    import_repository(archive_url, suite, components, architectures)
 
 if __name__ == '__main__':
 	try:
