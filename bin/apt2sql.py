@@ -46,7 +46,6 @@ from localaux import *
 from db_model import *
 from dpkg_control import *
 from lockfile import *
-from sqlalchemy.exceptions import InvalidRequestError
     
 Log = Logger() 
 

@@ -99,7 +99,7 @@ def check_changes(release, component, filename):
         os.system("reprepro removesrc %s-getdeb-testing %s %s" 
             % (release, name,  version))    
     # Include the package
-    command = "reprepro -C %s include %s-getdeb-testing %s" \
+    command = "reprepro --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
         % (component,  release, changes_file)
     (rc, output) = commands.getstatusoutput(command)
     print output
