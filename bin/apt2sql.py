@@ -211,9 +211,9 @@ def main():
     (options, args) = parser.parse_args()
     db_url = options.database or "sqlite:///apt2sql.db"
     if len(args) < 2:
-        print "Usage: %0 " \
+        print "Usage: %s " \
             "archive_root_url suite [component1[, component2] ]" \
-            % args[0]
+            % os.path.basename(__file__)
         sys.exit(2)
     
     archive_url = args[0]
