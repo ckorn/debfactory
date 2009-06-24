@@ -32,7 +32,7 @@ import shutil
 import string
 import commands
 
-available_releases = ("hardy", "intrepid","jaunty")
+available_releases = ("hardy", "intrepid","jaunty", "karmic")
 available_archs = ("i386", "amd64")
 
 apt_mirror = 'localhost:3142'
