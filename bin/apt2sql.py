@@ -43,7 +43,7 @@ import tempfile
 from optparse import OptionParser
 from urllib2 import Request, urlopen, URLError, HTTPError
 from localaux import *
-from db_model import *
+from packages_model import *
 from dpkg_control import *
 from lockfile import *
     
@@ -197,7 +197,7 @@ def main():
         help = "specificy the database URI\n\n" \
         "Examples\n\n" \
         "   mysql://user:password@localhost/apt2sql" \
-        "   sqlite://apt2sql" \
+        "   sqlite:///apt2sql.db" \
         )    
     parser.add_option("-q", "--quiet",
         action = "store_false", dest="verbose", default=True,
