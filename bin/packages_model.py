@@ -23,54 +23,54 @@ from sqlalchemy import UniqueConstraint
 
 
 class PackageList(Entity):
-    """
-    Identifies a package list, there will be one row for each 
-    "Packages" file, the uniqe key is:
-        suite+version+component+architecture
-    """
-    using_options(tablename='packagelist')
-    id = Field(Integer, primary_key=True)
-    origin = Field(String(64), nullable=False)
-    suite = Field(String(64), nullable=False) 
-    version = Field(String(64), nullable=False)
-    component = Field(String(64), nullable=False)
-    architecture = Field(String(64), nullable=False)    
-    label = Field(String(64), nullable=False)    
-    description = Field(String(128), nullable=True)
-    date = Field(String(64), nullable=False)        
-    using_table_options(UniqueConstraint('suite', 'version',
-        'component', 'architecture'))        
-    packages = ManyToMany('Package')
-    using_table_options(mysql_engine='InnoDB')
+	"""
+	Identifies a package list, there will be one row for each 
+	"Packages" file, the uniqe key is:
+		suite+version+component+architecture
+	"""
+	using_options(tablename='packagelist')
+	id = Field(Integer, primary_key=True)
+	origin = Field(String(64), nullable=False)
+	suite = Field(String(64), nullable=False) 
+	version = Field(String(64), nullable=False)
+	component = Field(String(64), nullable=False)
+	architecture = Field(String(64), nullable=False)    
+	label = Field(String(64), nullable=False)    
+	description = Field(String(128), nullable=True)
+	date = Field(String(64), nullable=False)        
+	using_table_options(UniqueConstraint('suite', 'version',
+		'component', 'architecture'))        
+	packages = ManyToMany('Package')
+	using_table_options(mysql_engine='InnoDB')
     
-
-    def __repr__(self):
-            return '<PackageList "%s %s %s %s %s">' % (self.origin \
-                , self.suite, self.version, self.component \
-                , self.architecture)
+	def __repr__(self):
+			return '<PackageList "%s %s %s %s %s">' % (self.origin \
+				, self.suite, self.version, self.component \
+				, self.architecture)
 
 
 class Package(Entity):
-    """
-    Package key information, only the package core information 
-        package+source+version+architecture
-    is kept on this table, additional data goes into package_data
-    """
-    using_options(tablename='package')
-    id = Field(Integer, primary_key=True)
-    package = Field(String(64), nullable=False, index = True) 
-    source = Field(String(64), nullable=True, index = True)
-    version = Field(String(64), nullable=False, index = True)
-    architecture = Field(String(64), nullable=False, index = True)
-    install_class = Field(String(16), nullable=True)
-    lists = ManyToMany('PackageList')
-    using_table_options(UniqueConstraint('package', 'version'
-        , 'architecture'))
-    using_table_options(mysql_engine='InnoDB')    
+	"""
+	Package key information, only the package core information 
+		package+source+version+architecture
+	is kept on this table, additional data goes into package_data
+	"""
+	using_options(tablename='package')
+	id = Field(Integer, primary_key=True)
+	package = Field(String(64), nullable=False, index = True) 
+	source = Field(String(64), nullable=True, index = True)
+	version = Field(String(64), nullable=False, index = True)
+	architecture = Field(String(64), nullable=False, index = True)
+	last_modified = Field(DateTime, nullable=True)
+	install_class = Field(String(16), nullable=True)	
+	lists = ManyToMany('PackageList')
+	using_table_options(UniqueConstraint('package', 'version'
+		, 'architecture'))
+	using_table_options(mysql_engine='InnoDB')    
 
-    def __repr__(self):
-            return '<Package "%s %s %s")>' % (self.package, \
-                self.version, self.architecture)
+	def __repr__(self):
+			return '<Package "%s %s %s")>' % (self.package, \
+				self.version, self.architecture)
 
 
 setup_all()
