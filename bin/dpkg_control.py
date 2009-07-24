@@ -66,7 +66,7 @@ class DebianControlFile:
 		attribute.
 		"""
 		self._data = []
-		self._deb_info = {}
+		deb_info = {}
 		last_data = []
 		if filename is not None:
 			self._filename = filename
@@ -79,23 +79,24 @@ class DebianControlFile:
 		deb_info = {}
 		field = None
 		for line in self._data:
+			line = line.strip("\r\n")
 			if not line:
 				continue
-			if line == '-----BEGIN PGP SIGNATURE-----':
+			if  line == '-----BEGIN PGP SIGNATURE-----':
 				break
 			if line[0] == " ":
 				last_data.append(line.strip("\r\n "))
 			else:
 				if field and len(last_data) > 1:					
 					deb_info[field] = last_data
-					last_data = []
+				last_data = []
 				(field, sep, value) = line.partition(": ") 
 				value = value.strip("\r\n")
 				if sep == ": ":
 					last_data = [value]
 					deb_info[field] = value
 		if field and len(last_data) > 1:					
-			deb_info[field] = last_data					
+				deb_info[field] = last_data			
 		self._deb_info = deb_info
 		
 	def files_list(self):
