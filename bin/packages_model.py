@@ -40,7 +40,7 @@ class PackageList(Entity):
 	date = Field(String(64), nullable=False)        
 	using_table_options(UniqueConstraint('suite', 'version',
 		'component', 'architecture'))        
-	packages = ManyToMany('Package')
+	packages = ManyToMany('Package', ondelete='restrict', tablename="packagelist_members")
 	using_table_options(mysql_engine='InnoDB')
     
 	def __repr__(self):
@@ -56,14 +56,16 @@ class Package(Entity):
 	is kept on this table, additional data goes into package_data
 	"""
 	using_options(tablename='package')
-	id = Field(Integer, primary_key=True)
-	package = Field(String(64), nullable=False, index = True) 
-	source = Field(String(64), nullable=True, index = True)
-	version = Field(String(64), nullable=False, index = True)
-	architecture = Field(String(64), nullable=False, index = True)
-	last_modified = Field(DateTime, nullable=True)
-	install_class = Field(String(16), nullable=True)	
-	lists = ManyToMany('PackageList')
+	id = Field(Integer, primary_key = True)
+	package = Field(String(64), nullable = False, index = True) 
+	source = Field(String(64), nullable = True, index = True)
+	version = Field(String(64), nullable = False, index = True)
+	architecture = Field(String(64), nullable = False, index = True)
+	last_modified = Field(DateTime, nullable = True)
+	description = Field(String(128), nullable = False)
+	homepage = Field(String(128), nullable = True)
+	install_class = Field(String(16), nullable = True)	
+	lists = ManyToMany('PackageList', ondelete='restrict', tablename="packagelist_members")
 	using_table_options(UniqueConstraint('package', 'version'
 		, 'architecture'))
 	using_table_options(mysql_engine='InnoDB')    

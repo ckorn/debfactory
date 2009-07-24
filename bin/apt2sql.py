@@ -40,6 +40,7 @@ import urllib2
 import zlib
 import gzip
 import tempfile
+import re
 from datetime import datetime
 from optparse import OptionParser
 from urllib2 import Request, urlopen, URLError, HTTPError
@@ -52,6 +53,7 @@ Log = Logger()
 #global force_rpool
 force_rpool = False
 
+	
 def get_last_mofified_time(file_url):
 	"""
 	Returns the last mofidifed time for the specified url
@@ -68,73 +70,73 @@ def get_last_mofified_time(file_url):
 	
 def import_repository(archive_url, suite, requested_components \
         , requested_architectures):
-    """
-    Import a repository into the dabase
-    """
-    # Get the base release file to check the list of available 
-    # architectures and components
-    Log.log("Importing repository: %s %s [%s] [%s]" \
-        % (archive_url, suite, requested_components or "all" \
-            , requested_architectures or "all"))
-    release_file = "%s/dists/%s/Release" % (archive_url, suite)
-    Log.log("Downloading %s" % release_file)
-    try:
-        f = urllib2.urlopen(release_file)
-    except HTTPError, e:        
-        print "Error %s : %s" % (e.code, release_file)    
-        return 1
-    Release = DebianControlFile(contents = f.read())    
-    f.close()
-    
-    architectures = Release['Architectures'].split()
-    components = Release['Components'].split()
-    print "Available architectures:", architectures
-    print "Available components:", components
-    
-    # Check if the requested components are available
-    if requested_components:
-        for component in requested_components[:]:
-            if component not in components:
-                Log.print_("Requested unavailable component %s" 
-                    % component)
-                return 2 
+	"""
+	Import a repository into the dabase
+	"""
+	# Get the base release file to check the list of available 
+	# architectures and components
+	Log.log("Importing repository: %s %s [%s] [%s]" \
+		% (archive_url, suite, requested_components or "all" \
+			, requested_architectures or "all"))
+	release_file = "%s/dists/%s/Release" % (archive_url, suite)
+	Log.log("Downloading %s" % release_file)
+	try:
+		f = urllib2.urlopen(release_file)
+	except HTTPError, e:        
+		print "Error %s : %s" % (e.code, release_file)    
+		return 1
+	Release = DebianControlFile(contents = f.read())    
+	f.close()
 
-    # Check if the requested architectures are available
-    if requested_architectures:
-        for architecture in requested_architectures[:]:
-            if architecture not in architectures:
-                Log.print_("Requested unavailable architecture" \
-                    , architecture)
-                return 2 
-                
-    components = requested_components or components
-    architectures = requested_architectures or architectures
-    version = Release['Version'] or suite
+	architectures = Release['Architectures'].split()
+	components = Release['Components'].split()
+	print "Available architectures:", architectures
+	print "Available components:", components
+
+	# Check if the requested components are available
+	if requested_components:
+		for component in requested_components[:]:
+			if component not in components:
+				Log.print_("Requested unavailable component %s" 
+					% component)
+				return 2 
+
+	# Check if the requested architectures are available
+	if requested_architectures:
+		for architecture in requested_architectures[:]:
+			if architecture not in architectures:
+				Log.print_("Requested unavailable architecture" \
+					, architecture)
+				return 2 
+				
+	components = requested_components or components
+	architectures = requested_architectures or architectures
+	version = Release['Version'] or suite
     
-    # Now let's import the Packages file for each architecture
-    for arch in architectures:
-        for component in components:
-            packagelist = \
-                PackageList.query.filter_by( \
-                    suite = suite, \
-                    version = version, \
-                    component = component, \
-                    architecture = arch).first() \
-                or \
-                PackageList( \
-                    suite = suite, \
-                    version = version, \
-                    component = component, \
-                    origin = Release['Origin'], \
-                    label = Release['Label'], \
-                    architecture = arch, \
-                    description = Release['Description'], \
-                    date = Release['Date'] \
-                    )            
-            packages_file = "%s/dists/%s/%s/binary-%s/Packages.gz" \
-                % (archive_url, suite, component, arch)
-            import_packages_file(archive_url, packagelist, packages_file)
-            packagelist = None
+	# Now let's import the Packages file for each architecture
+	for arch in architectures:
+		for component in components:
+			packagelist = \
+				PackageList.query.filter_by( \
+					suite = suite, \
+					version = version, \
+					component = component, \
+					architecture = arch).first() \
+				or \
+				PackageList( \
+					suite = suite, \
+					version = version, \
+					component = component, \
+					origin = Release['Origin'], \
+					label = Release['Label'], \
+					architecture = arch, \
+					description = Release['Description'], \
+					date = Release['Date'] \
+					)            
+			packages_file = "%s/dists/%s/%s/binary-%s/Packages.gz" \
+				% (archive_url, suite, component, arch)
+			import_packages_file(archive_url, packagelist, packages_file)
+			packagelist = None
 
 
 def import_packages_file(archive_url, packagelist, packages_file):
@@ -169,7 +171,9 @@ def import_packages_file(archive_url, packagelist, packages_file):
 		package_name = control['Package']
 		source = control['Source']
 		version = control['Version']
-		architecture = control['Architecture']		
+		architecture = control['Architecture']
+		description = 	control['Description'][0]
+		homepage = 	control['homepage']	
 		package = Package.query.filter_by( \
 			package = package_name, \
 			version = version, \
@@ -178,9 +182,7 @@ def import_packages_file(archive_url, packagelist, packages_file):
 			deb_filename = "%s/%s" % (archive_url, control['Filename'])
 			if force_rpool:
 				deb_filename = deb_filename.replace("pool", "rpool", 1)
-			print deb_filename
 			last_modified = get_last_mofified_time(deb_filename)
-			print "LM2:", last_modified
 			Log.print_("Inserting %s %s %s %s" % (package_name, source \
 				, version, architecture))
 			package = Package( 
@@ -188,11 +190,13 @@ def import_packages_file(archive_url, packagelist, packages_file):
 				, source = source \
 				, version = version \
 				, architecture = architecture \
-				, last_modified = last_modified )
+				, last_modified = last_modified \
+				, description = description \
+				, homepage = homepage \
+			)
 		# Create relation if needed
 		if not packagelist in package.lists:
 			Log.print_("Including %s -> %s" % (package, packagelist))
-			print "AFTER:", package.last_modified
 			package.lists.append(packagelist)
 		# Add to in memory list to skip removal
 		packages.append("%s %s %s" % 
