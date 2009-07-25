@@ -61,7 +61,7 @@ def get_last_mofified_time(file_url):
 	try:
 		f = urllib2.urlopen(file_url)
 	except HTTPError, e:        
-		print "Error %s : %s" % (e.code, file_url)    
+		log.print_("Error %s : %s" % (e.code, file_url))
 		return None	
 	last_modified = f.info()['Last-Modified']		
 	f.close()	
@@ -90,8 +90,8 @@ def import_repository(archive_url, suite, requested_components \
 
 	architectures = Release['Architectures'].split()
 	components = Release['Components'].split()
-	print "Available architectures:", architectures
-	print "Available components:", components
+	Log.log ("Available architectures: %s" % architectures)
+	Log.log ("Available components: %s" % components)
 
 	# Check if the requested components are available
 	if requested_components:
