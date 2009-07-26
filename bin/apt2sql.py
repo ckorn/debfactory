@@ -162,7 +162,7 @@ def import_packages_file(archive_url, packagelist, packages_file):
 	data = f.read()
 	f.close()
 	os.unlink(tmpfile.name)
-	packages = []
+	keep_packages_list = [] # info from packages loaded from the file
 	
 	for package_info in data.split("\n\n"):
 		if not package_info: # happens at the end of the file
@@ -199,7 +199,7 @@ def import_packages_file(archive_url, packagelist, packages_file):
 			Log.print_("Including %s -> %s" % (package, packagelist))
 			package.lists.append(packagelist)
 		# Add to in memory list to skip removal
-		packages.append("%s %s %s" % 
+		keep_packages_list.append("%s %s %s" % 
 			(package.package, package.version, package.architecture))            
 	# Remove all relations to packages which were not imported
 	# on the loop above
@@ -207,15 +207,14 @@ def import_packages_file(archive_url, packagelist, packages_file):
 	for package in packagelist.packages:
 		list_item = "%s %s %s" % (package.package, package.version \
 			, package.architecture)			
-		try:
-			packages.remove(list_item)
-		except KeyError:
-			Log._print("Removing %s" % `package`)
+		if list_item in keep_packages_list:
+			keep_packages_list.remove(list_item)
+		else:
+			Log.print_("Removing %s" % `package`)
 			must_remove.append(package)        
 	for package in must_remove:
 		packagelist.packages.remove(package)
 	session.commit()
-	del packages
 	del data
 	
 	
