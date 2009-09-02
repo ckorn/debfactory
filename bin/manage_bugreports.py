@@ -208,5 +208,5 @@ if __name__ == "__main__":
 						full_desc.append(desc)
 				comment = ""
 				for line in full_desc:
-					comment += line
+					comment += line + "\n"
 				bug.newMessage(content=comment, subject=subject_text)
