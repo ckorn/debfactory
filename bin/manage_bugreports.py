@@ -72,7 +72,7 @@ def check_not_empty(bugs):
 
 if __name__ == "__main__":
 	if len(sys.argv) < 2:
-		print "Usage: "+sys.argv[0]+" s[tart] | b[uild] | t[ested] [jaunty|hardy].[amd64|i386] | r[eleased]"
+		print "Usage: "+sys.argv[0]+" s[tart] | b[uild] | t[ested] [jaunty|hardy].[amd64|i386] | r[eleased] | i[nvalid]"
 		sys.exit(1)
 
 	changelog = 'debian/changelog'
@@ -183,3 +183,30 @@ if __name__ == "__main__":
 				 "---------------\n" + \
 				 current_changelog['changelog_entry'].strip('\r\n'), \
 				 subject=subject_text)
+	elif sys.argv[1] == 'invalid' or sys.argv[1].startswith('i'):
+		current_changelog = get_changelog(1, changelog)
+		bug_ids = current_changelog['bugs_to_be_closed']
+		check_not_empty(bug_ids)
+
+		for bug_id in bug_ids:
+			bug = launchpad.bugs[bug_id]
+			subject_text = "Re: " + bug.title
+			wrote_task = False
+
+			for task in bug.bug_tasks:
+				if task.bug_target_display_name == project_name:
+					wrote_task = True
+					task.transitionToStatus(status="Invalid")
+
+			if wrote_task:
+				print 'Please type the comment, end with "end"'
+				full_desc = []
+				desc = ""
+				while desc != "end":
+					desc = raw_input()
+					if desc != "end":
+						full_desc.append(desc)
+				comment = ""
+				for line in full_desc:
+					comment += line
+				bug.newMessage(content=comment, subject=subject_text)
