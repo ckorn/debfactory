@@ -103,7 +103,8 @@ if __name__ == "__main__":
 
 		for bug_id in bug_ids:
 			bug = launchpad.bugs[bug_id]
-			subject_text = "Re: " + bug.title
+			bug_title = bug.title
+			subject_text = "Re: " + bug_title
 
 			wrote_task = False
 
@@ -122,6 +123,9 @@ if __name__ == "__main__":
 					bug.newMessage(content="Taking " + previous_changelog['package'] \
 					 + " " + previous_changelog['version'] + " as starting point.", \
 					 subject=subject_text)
+				print 'Bug "' + bug_title + '" has been changed.'
+			else:
+				print 'No task for "' + project_name + '" has been found in bug "' + bug_title + '".'
 	elif sys.argv[1] == 'build' or sys.argv[1].startswith('b'):
 		current_changelog = get_changelog(1, changelog)
 		bug_ids = current_changelog['bugs_to_be_closed']
@@ -129,7 +133,8 @@ if __name__ == "__main__":
 
 		for bug_id in bug_ids:
 			bug = launchpad.bugs[bug_id]
-			subject_text = "Re: " + bug.title
+			bug_title = bug.title
+			subject_text = "Re: " + bug_title
 
 			wrote_task = False
 
@@ -141,6 +146,9 @@ if __name__ == "__main__":
 			if wrote_task:
 				bug.newMessage(content="Package has been built for " + current_changelog['release'] + ".", \
 				  subject=subject_text)
+				print 'Bug "' + bug_title + '" has been changed.'
+			else:
+				print 'No task for "' + project_name + '" has been found in bug "' + bug_title + '".'
 	elif sys.argv[1] == 'tested' or sys.argv[1].startswith('t'):
 		if len(sys.argv) < 3:
 			print "The release the package has been tested for is missing."
@@ -152,6 +160,7 @@ if __name__ == "__main__":
 
 		for bug_id in bug_ids:
 			bug = launchpad.bugs[bug_id]
+			bug_title = bug.title
 			has_task = False
 
 			for task in bug.bug_tasks:
@@ -163,6 +172,9 @@ if __name__ == "__main__":
 				tags.append('tested-' + sys.argv[2])
 				bug.tags = tags
 				bug.lp_save()
+				print 'Bug "' + bug_title + '" has been changed.'
+			else:
+				print 'No task for "' + project_name + '" has been found in bug "' + bug_title + '".'
 	elif sys.argv[1] == 'released' or sys.argv[1].startswith('r'):
 		current_changelog = get_changelog(1, changelog)
 		bug_ids = current_changelog['bugs_to_be_closed']
@@ -170,7 +182,8 @@ if __name__ == "__main__":
 
 		for bug_id in bug_ids:
 			bug = launchpad.bugs[bug_id]
-			subject_text = "Re: " + bug.title
+			bug_title = bug.title
+			subject_text = "Re: " + bug_title
 			wrote_task = False
 
 			for task in bug.bug_tasks:
@@ -183,6 +196,9 @@ if __name__ == "__main__":
 				 "---------------\n" + \
 				 current_changelog['changelog_entry'].strip('\r\n'), \
 				 subject=subject_text)
+				print 'Bug "' + bug_title + '" has been changed.'
+			else:
+				print 'No task for "' + project_name + '" has been found in bug "' + bug_title + '".'
 	elif sys.argv[1] == 'invalid' or sys.argv[1].startswith('i'):
 		current_changelog = get_changelog(1, changelog)
 		bug_ids = current_changelog['bugs_to_be_closed']
@@ -190,7 +206,8 @@ if __name__ == "__main__":
 
 		for bug_id in bug_ids:
 			bug = launchpad.bugs[bug_id]
-			subject_text = "Re: " + bug.title
+			bug_title = bug.title
+			subject_text = "Re: " + bug_title
 			wrote_task = False
 
 			for task in bug.bug_tasks:
@@ -210,3 +227,6 @@ if __name__ == "__main__":
 				for line in full_desc:
 					comment += line + "\n"
 				bug.newMessage(content=comment, subject=subject_text)
+				print 'Bug "' + bug_title + '" has been changed.'
+			else:
+				print 'No task for "' + project_name + '" has been found in bug "' + bug_title + '".'
