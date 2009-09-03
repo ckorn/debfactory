@@ -71,9 +71,8 @@ def getDevPackages(header):
     for curStripped_file in stripped_files:
       if curStripped_file.find(dev) <> -1:
         alreadyIn = True
-    
     if not alreadyIn:
-			stripped_files.append(stripped_file)
+      stripped_files.append(stripped_file)
   return stripped_files
 
 def printDevs(devs, dev_list):
@@ -118,10 +117,27 @@ def buildDepends(dev_list):
   print "\n\n\n"
   print builddeps
 
+def findUselessHeaders(dev, header_list):
+  aptFile = os.popen("apt-file list "  + dev + " | cut -d\  -f2")
+  headers = aptFile.readlines()
+  useless_header_list = list()
+  for header in headers:
+    for found_header in header_list:
+      if header.find(found_header + '\n') <> -1:
+        useless_header_list.append(found_header)
+  return useless_header_list
+
 if __name__=="__main__":
   dev_list = list()
   files = getSourceFiles()
   file_header_list = getUniqHeadersInFiles(files)
+  useless_header_list = list()
+  usually_installed_headers = ['map', 'algorithm', 'string', 'vector', 'memory', \
+    'iostream', 'time.h', 'sys/time.h', 'list', 'stdarg.h', 'ctime', 'set', 'cstring', \
+    'stdlib.h', 'stddef.h', 'limits', 'numeric', 'queue', 'sys/stat.h', 'sys/types.h', \
+    'memory.h', 'assert.h', 'new', 'float.h', 'cstdarg', 'stdexcept', 'typeinfo', \
+    'deque', 'exception', 'cassert', 'cstdlib', 'stack', 'sys/param.h', 'dirent.h', \
+    'unistd.h', 'fnmatch.h', 'ctype.h', 'limits.h']
 #  file_header_list = removeSkipHeaders(file_header_list)
 
   print "Found "+str(len(file_header_list))+" unique headers."
@@ -131,6 +147,17 @@ if __name__=="__main__":
 
   for file_header in file_header_list:
     print
+    dummy, header = file_header
+    if header in useless_header_list:
+      print 'Skipped header "' + header + '" already which already is in a dev package'
+      i += 1
+      continue
+
+    if file_header[1] in usually_installed_headers:
+      print 'Skip usual header'
+      i += 1
+      continue
+
     devs = getDevPackages(file_header[1])
 
     if len(devs) == 0:
@@ -145,6 +172,7 @@ if __name__=="__main__":
         chosenDev = chooseDevPackage(devs, i, numHeaders, defaultSelection)
         if chosenDev != None and not chosenDev in dev_list:
           dev_list.append(chosenDev)
+          useless_header_list.extend(findUselessHeaders(chosenDev, [header for (dummy, header) in file_header_list]))
       else:
         print "Header " + file_header[1] + " is in standard lib"
 
