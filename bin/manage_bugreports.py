@@ -25,14 +25,11 @@
 #launchpad = Launchpad.get_token_and_login('GetDeb.net Bug Manager', EDGE_SERVICE_ROOT, cachedir)
 #launchpad.credentials.save(file("some-file.txt", "w"))
 
-
 import os
 import sys
 import re
 from launchpadlib.launchpad import Launchpad, EDGE_SERVICE_ROOT
 from launchpadlib.credentials import Credentials
-
-LP_BUGS = re.compile("\(LP: #([0-9]+)\)")
 
 def get_changelog(i, filename):
 	changelog = file(filename, "r")
@@ -57,10 +54,16 @@ def get_changelog(i, filename):
 			break
 		if line.startswith('  ') and current_changelog == i:
 			changelog_dict['changelog_entry'] += line + '\n'
-			bugs = LP_BUGS.findall(line)
-			for bug in bugs: changelog_dict['bugs_to_be_closed'].append(bug)
 		if line.startswith(' -- ') and current_changelog == i:
 			changelog_dict['changelog_entry'] += line + '\n'
+
+	line_matches = re.finditer('\(LP:\s*(?P<buglist>.+?\))', changelog_dict['changelog_entry'], re.DOTALL)
+	for line_match in line_matches:
+		bug_matches = re.finditer('#(?P<bugnum>\d+)', line_match.group('buglist'))
+		for bug_match in bug_matches:
+			bugnum = bug_match.group('bugnum')
+			if not bugnum in changelog_dict['bugs_to_be_closed']:
+				changelog_dict['bugs_to_be_closed'].append(bugnum)
 
 	return changelog_dict
 
