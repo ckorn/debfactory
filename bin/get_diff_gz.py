@@ -16,9 +16,9 @@ def get_base_package_name():
 	if not tmp: return None
 	return os.path.basename(tmp[0])
 
-def search_on_getdeb(orig_file):
+def search_on_getdeb(orig_file, release):
 	http_connection = HTTPConnection('archive.getdeb.net')
-	download_dir = 'http://archive.getdeb.net/getdeb/ubuntu/jaunty/' + orig_file[0:2] + '/'
+	download_dir = 'http://archive.getdeb.net/getdeb/ubuntu/' + release + '/' + orig_file[0:2] + '/'
 	http_connection.request('GET', download_dir)
 	http_response = http_connection.getresponse()
 	if http_response.status != 200: return None
@@ -26,6 +26,34 @@ def search_on_getdeb(orig_file):
 	http_connection.close()
 	data = data.split('\n')
 	basename = orig_file.split('_')[0]
+	package_lines = list()
+	for line in data:
+		if basename in line:
+			package_lines.append(line)
+	if len(package_lines) == 0: return None
+	p_d = list()
+	package_re = re.compile('<a .*?>(?P<orig>.*?)\.diff\.gz<')
+	download_re = re.compile('<a href="(?P<download>.*?)">')
+	for line in package_lines:
+		search_result = re.search(package_re, line)
+		if not search_result: continue
+		orig = search_result.group('orig') 
+		search_result = re.search(download_re, line)
+		download = download_dir + search_result.group('download')
+		p_d.append((orig,download))
+	return p_d
+
+def search_on_playdeb(orig_file, release):
+	http_connection = HTTPConnection('archive.getdeb.net')
+	basename = orig_file.split('_')[0]
+	download_dir = 'http://archive.getdeb.net/getdeb/ubuntu/pool/games/' + orig_file[0] + \
+	  '/' + basename + '/'
+	http_connection.request('GET', download_dir)
+	http_response = http_connection.getresponse()
+	if http_response.status != 200: return None
+	data = http_response.read()
+	http_connection.close()
+	data = data.split('\n')
 	package_lines = list()
 	for line in data:
 		if basename in line:
@@ -65,7 +93,14 @@ if __name__ == "__main__":
 		print "No orig.tar.gz file has been found."
 		sys.exit(1)
 
-	result = search_on_getdeb(orig_file)
+	if len(sys.argv) == 2:
+		release = sys.argv[1]
+	else:
+		release = 'jaunty'
+
+	result = search_on_getdeb(orig_file, release) or []
+	result2 = search_on_playdeb(orig_file, release) or []
+	result.extend(result2)
 	i = 0
 	for r in result:
 		p,d = r
