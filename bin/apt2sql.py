@@ -49,19 +49,22 @@ from packages_model import *
 from dpkg_control import *
 from lockfile import *
     
+    
+# Some global variables
 Log = Logger()
-#global force_rpool
 force_rpool = False
+check_last_modified = False
 
-	
+
+# Get the last modified time for an URL specified file	
 def get_last_mofified_time(file_url):
 	"""
 	Returns the last mofidifed time for the specified url
-	"""
+	"""	
 	try:
 		f = urllib2.urlopen(file_url)
 	except HTTPError, e:        
-		log.print_("Error %s : %s" % (e.code, file_url))
+		Log.print_("Error %s : %s" % (e.code, file_url))
 		return None	
 	last_modified = f.info()['Last-Modified']		
 	f.close()	
@@ -105,8 +108,8 @@ def import_repository(archive_url, suite, requested_components \
 	if requested_architectures:
 		for architecture in requested_architectures[:]:
 			if architecture not in architectures:
-				Log.print_("Requested unavailable architecture" \
-					, architecture)
+				Log.print_("Requested unavailable architecture %s" % \
+					architecture)
 				return 2 
 				
 	components = requested_components or components
@@ -143,7 +146,7 @@ def import_packages_file(archive_url, packagelist, packages_file):
 	"""
         Imports packages information from a packages file
 	"""
-	global force_rpool	
+	global force_rpool, check_last_modified
 	Log.log("Downloading %s" % packages_file)
 	try:
 		f = urllib2.urlopen(packages_file)
@@ -182,7 +185,10 @@ def import_packages_file(archive_url, packagelist, packages_file):
 			deb_filename = "%s/%s" % (archive_url, control['Filename'])
 			if force_rpool:
 				deb_filename = deb_filename.replace("pool", "rpool", 1)
-			last_modified = get_last_mofified_time(deb_filename)
+			if check_last_modified:
+				last_modified = get_last_mofified_time(deb_filename)
+			else:
+				last_modified = datetime.now()
 			Log.print_("Inserting %s %s %s %s" % (package_name, source \
 				, version, architecture))
 			package = Package( 
@@ -216,10 +222,15 @@ def import_packages_file(archive_url, packagelist, packages_file):
 		packagelist.packages.remove(package)
 	session.commit()
 	del data
-	
+
+# We set the database engine here
+def attach_to_db(db_url, echo):
+	metadata.bind = db_url        
+	metadata.bind.echo = echo 
+	setup_all(True) 	
 	
 def main():
-	global force_rpool
+	global force_rpool, check_last_modified
 	parser = OptionParser()
 	parser.add_option("-d", "--database",
 		action = "store", type="string", dest="database",
@@ -231,6 +242,9 @@ def main():
 	parser.add_option("-f", "--force-rpool",
 		action = "store_true", dest="rpool", default=False,
 		help = "force to use rpool path instead of pool")				
+	parser.add_option("-m", "--get-last-modified",
+		action = "store_true", dest="check_last_modified", default=False,
+		help = "get the last modified info for .deb files")			
 	parser.add_option("-q", "--quiet",
 		action = "store_false", dest="verbose", default=True,
 		help = "don't print status messages to stdout")
@@ -253,28 +267,28 @@ def main():
 	components = None
 	architectures = None
 	if len(args) > 2:
-		components = args[2].split(",")    
+		if args[2] != "*":
+			components = args[2].split(",")    
 	if len(args) > 3:
 		architectures = args[3].split(",")    
 
 	Log.verbose = options.verbose	    
 	force_rpool = options.rpool
+	check_last_modified = options.check_last_modified
 	try:
 		lock = LockFile("apt2sql")
 	except LockFile.AlreadyLockedError:
 		Log.log("Unable to acquire lock, exiting")
 		return
 
-	# We set the database engine here
-	metadata.bind = db_url        
-	metadata.bind.echo = options.sql_echo    
-	setup_all(True)
+	attach_to_db(db_url, options.sql_echo)
+	
 	if options.recreate_tables:
 		drop_all()
 		setup_all(True)
 
 	import_repository(archive_url, suite, components, architectures)
-	
+		
 if __name__ == '__main__':
 	try:
 		main()

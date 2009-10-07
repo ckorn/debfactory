@@ -79,7 +79,11 @@ class DebianControlFile:
 		deb_info = {}
 		field = None
 		for line in self._data:
-			line = unicode(line, 'utf-8')
+			try:
+				line = unicode(line, 'utf-8')
+			except UnicodeDecodeError:
+				print "WARNING: Package info contains non utf-8 data, replacing"
+				line = unicode(line, 'utf-8', errors='replace')
 			if not line:
 				continue
 			if line == '-----BEGIN PGP SIGNATURE-----':
