@@ -224,7 +224,7 @@ def import_packages_file(archive_url, packagelist, packages_file):
 	del data
 
 # We set the database engine here
-def attach_to_db(db_url, echo):
+def attach_to_db(db_url, echo=False):
 	metadata.bind = db_url        
 	metadata.bind.echo = echo 
 	setup_all(True) 	
