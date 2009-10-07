@@ -19,6 +19,7 @@
 from socket import *
 import re
 from httplib import HTTPSConnection
+from httplib import HTTPConnection
 
 channels = "#GetDeb"
 bot_nick = "gbotu"
@@ -84,7 +85,7 @@ def send_bug_information(bug_information, sock):
 
 
 def send_information(msg, sock):
-	global bot_nick
+	global bot_nick, channels
 	msg = msg.strip(' ')
 	if not msg[0] == '!': return
 
@@ -109,6 +110,36 @@ def send_information(msg, sock):
 
 		sock.send("PRIVMSG " + channels + " :" + commands[command] + "\r\n")
 
+def send_youtube_information(msg, sock):
+	global channels
+
+	matches = re.finditer('youtube\.com(?P<link>/watch\S*)', msg)
+	if not matches: return
+
+	for match in matches:
+		http_connection = HTTPConnection('www.youtube.com')
+		http_connection.request('GET', match.group('link'))
+		http_response = http_connection.getresponse()
+		if http_response.status != 200:
+			print "Error occured when fetching data"
+			continue
+		data = http_response.read(1024)
+		data = data.split('\n')
+
+		for line in data:
+			titles = re.finditer('<title>(?P<title>.*)</title>', line)
+
+			found = False
+			for title in titles:
+				sock.send("PRIVMSG " + channels + u" :\u0002" + title.group('title') + \
+				          u"\u000F www.youtube.com" + match.group('link') + "\r\n")
+				found = True
+				break
+			if found: break
+
+		http_connection.close()
+	return
+
 def start_bot():
 	global channels, bot_nick, ircaddr
 	sock = socket(AF_INET, SOCK_STREAM)
@@ -132,6 +163,7 @@ def start_bot():
 					bug_information = get_bug_information(bug_ids)
 					send_bug_information(bug_information, sock)
 					send_information(msg, sock)
+					send_youtube_information(msg, sock)
 	sock.shutdown(SHUT_RDWR)
 	sock.close()
 
