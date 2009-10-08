@@ -269,7 +269,7 @@ Format: 1.0
 Source: pybackpack
 Binary: pybackpack
 Architecture: all
-Version: 10.9.2-1-1~getdeb1
+Version: 1.5.0-2009-10-03-1~getdeb1
 Maintainer: Andy Price <andy@andrewprice.me.uk>
 Uploaders: Python Applications Packaging Team <python-apps-team@lists.alioth.debian.org>
 Homepage: http://andrewprice.me.uk/projects/pybackpack/

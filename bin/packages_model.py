@@ -64,7 +64,8 @@ class Package(Entity):
 	last_modified = Field(DateTime, nullable = True)
 	description = Field(String(128), nullable = False)
 	homepage = Field(String(128), nullable = True)
-	install_class = Field(String(16), nullable = True, index = True)	
+	install_class = Field(String(16), nullable = True, index = True)
+	is_visible = Field(Boolean, default = True)	
 	lists = ManyToMany('PackageList', ondelete='restrict', tablename="packagelist_members")
 	using_table_options(UniqueConstraint('package', 'version'
 		, 'architecture'))

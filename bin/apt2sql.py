@@ -189,8 +189,9 @@ def import_packages_file(archive_url, packagelist, packages_file):
 				last_modified = get_last_mofified_time(deb_filename)
 			else:
 				last_modified = datetime.now()
-			Log.print_("Inserting %s %s %s %s" % (package_name, source \
-				, version, architecture))
+			is_visible = check_visibility(package_name, check_list)				
+			Log.print_("Inserting %s %s %s %s visible=%s" % (package_name, source \
+				, version, architecture, is_visible))
 			package = Package( 
 				package = package_name \
 				, source = source \
@@ -199,6 +200,7 @@ def import_packages_file(archive_url, packagelist, packages_file):
 				, last_modified = last_modified \
 				, description = description \
 				, homepage = homepage \
+				, is_visible = is_visible \
 			)
 		# Create relation if needed
 		if not packagelist in package.lists:
@@ -228,7 +230,27 @@ def attach_to_db(db_url, echo=False):
 	metadata.bind = db_url        
 	metadata.bind.echo = echo 
 	setup_all(True) 	
-	
+
+def create_check_visibility_list(check_file):
+	check_list = list()
+	if check_file:
+		for line in open(check_file):   
+			if not line.strip():    
+				continue        
+			if line.startswith("#"):
+				continue
+			check_list.append(re.compile(line.strip()))
+	return check_list
+                                                                                                                                
+def check_visibility(package,check_list):
+	visibility = True                                                       
+	for check in check_list:
+		match = check.search(package)
+		if match:
+			visibility = False
+			break
+	return visibility	
+		
 def main():
 	global force_rpool, check_last_modified
 	parser = OptionParser()
@@ -239,6 +261,10 @@ def main():
 		"   mysql://user:password@localhost/apt2sql" \
 		"   sqlite:///apt2sql.db" \
 	)
+	parser.add_option("-c", "--check_visibility",
+		action = "store", type="string", dest="check_file",
+		help = "specificy text file containig regexp to exclude packages\n\n" \
+		)    		
 	parser.add_option("-f", "--force-rpool",
 		action = "store_true", dest="rpool", default=False,
 		help = "force to use rpool path instead of pool")				
@@ -256,6 +282,7 @@ def main():
 		help = "echo the sql statements")
 	(options, args) = parser.parse_args()
 	db_url = options.database or "sqlite:///apt2sql.db"
+	check_file = options.check_file
 	if len(args) < 2:
 		print "Usage: %s " \
 			"archive_root_url suite [component1[, component2] ]" \
@@ -287,7 +314,8 @@ def main():
 		drop_all()
 		setup_all(True)
 
-	import_repository(archive_url, suite, components, architectures)
+	import_repository(archive_url, suite, components, architectures, \
+		check_file )
 		
 if __name__ == '__main__':
 	try:
