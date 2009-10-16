@@ -84,18 +84,18 @@ class DebianControlFile:
 			except UnicodeDecodeError:
 				print "WARNING: Package info contains non utf-8 data, replacing"
 				line = unicode(line, 'utf-8', errors='replace')
+			line = line.strip("\r\n")
 			if not line:
 				continue
 			if line == '-----BEGIN PGP SIGNATURE-----':
 				break
 			if line[0] == " ":
-				last_data.append(line.strip("\r\n "))
+				last_data.append(line)
 			else:
 				if field and len(last_data) > 1:					
 					deb_info[field] = last_data
 				last_data = []
 				(field, sep, value) = line.partition(": ") 
-				value = value.strip("\r\n")
 				if sep == ": ":
 					last_data = [value]
 					deb_info[field] = value
@@ -263,36 +263,53 @@ class DebianControlFile:
 if __name__ == '__main__':
 	sample_control_file = """	
 -----BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+Hash: SHA256
 
-Format: 1.0
-Source: pybackpack
-Binary: pybackpack
-Architecture: all
-Version: 1.5.0-2009-10-03-1~getdeb1
-Maintainer: Andy Price <andy@andrewprice.me.uk>
-Uploaders: Python Applications Packaging Team <python-apps-team@lists.alioth.debian.org>
-Homepage: http://andrewprice.me.uk/projects/pybackpack/
-Standards-Version: 3.8.0
-Vcs-Browser: http://svn.debian.org/wsvn/python-apps/packages/pybackpack/?op=log
-Vcs-Svn: svn://svn.debian.org/python-apps/packages/pybackpack/trunk/
-Build-Depends: cdbs, debhelper (>= 5), python-support (>= 0.3), python-dev
+Format: 1.8
+Date: Tue, 07 Jul 2009 02:28:23 +0200
+Source: yofrankie
+Binary: yofrankie
+Architecture: source
+Version: 1.1b-1~getdeb1
+Distribution: karmic
+Urgency: low
+Maintainer: Christoph Korn <c_korn@gmx.de>
+Changed-By: Christoph Korn <c_korn@gmx.de>
+Description: 
+ yofrankie  - 3D current generation platform game
+Changes: 
+ yofrankie (1.1b-1~getdeb1) karmic; urgency=low
+ .
+   * New upstream version.
 Checksums-Sha1: 
- 5ea70dfc4c3c204b24ffe7efba852f10464322db 116514 pybackpack_0.5.6.orig.tar.gz
- 2b2cf9fcf2d565dca921b8324c34337cbd244752 2254 pybackpack_0.5.6-1.diff.gz
+ a7ddedc0718746e84dee4abbf5a9349dc2298f77 1715 yofrankie_1.1b-1~getdeb1.dsc
+ eb295b42a4a14dcbcab26e0df8077267625cfca7 126347423 yofrankie_1.1b.orig.tar.gz
+ 1e5d54930757965d74b605f58e03f40242894e36 7312 yofrankie_1.1b-1~getdeb1.diff.gz
 Checksums-Sha256: 
- 58f7680d9032799303b374d36996ca020415edf2474e95ca1ca90fe73b297d12 116514 pybackpack_0.5.6.orig.tar.gz
- 59e4221b35941ed4da9ea97112f1e2361555ab3d43125a09a887d9bd3850dd60 2254 pybackpack_0.5.6-1.diff.gz
+ 5e9ce202abb68a3c0b08d65c73062458651f3123211131ed02886759408ab24a 1715 yofrankie_1.1b-1~getdeb1.dsc
+ cacb84f14de130780fab0b361b73a7429f9a69c7a9ae71f0d1ac8a15f7cb6cb8 126347423 yofrankie_1.1b.orig.tar.gz
+ 631a5428dbc26c2c4d68ff3b7885a5d563c9401788dc5317a7490eb989ed8d31 7312 yofrankie_1.1b-1~getdeb1.diff.gz
 Files: 
- 63d787dd207b150e0c258f7fe50f0477 116514 pybackpack_0.5.6.orig.tar.gz
- 1d204c04b188f637dce0c5e4b085a67f 2254 pybackpack_0.5.6-1.diff.gz
+ b4d257dc1fc4c49946fa5b2881bd0729 1715 games optional yofrankie_1.1b-1~getdeb1.dsc
+ f149c32b22e7bdecec55eae3050ab37b 126347423 games optional yofrankie_1.1b.orig.tar.gz
+ 23544378887c0c31b391b9e11072a40d 7312 games optional yofrankie_1.1b-1~getdeb1.diff.gz
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.4.9 (GNU/Linux)
 
-iEYEARECAAYFAkjdYrAACgkQB01zfu119ZmFHwCfeu2a9zvHjmzXwBfi6stkmQVs
-bDAAn0Q2qf3no3vO1piw5uhwMbIul6Kb
-=74wC
+iQIcBAEBCAAGBQJK2K9bAAoJECT9/e/4vK3Q0dcP/iX0Gdy7xGI5D9BNMLLW/siu
+sHINE4258eqCP5N9H2PrFvPz1c4auKmtBia8co/BjI990qVan4hRRyKPYE8qbJ7a
+3tiuN+kQiWK3TarEZ/JuWUt5H0DI+oUWUuAsY2pGyS9GM/wMJsO9MD/ZbOodNvVm
+/g7GICGJ8Rlk6wb0YcywJOPCU2Bc23GcqqQQ2kqtwZPjpS8CdwtMv+pD+w9QeJ8T
+pZ3j4K7ZVnOPis7s8rUinx7bgTDICk8e05gdPwNRVn5jNBtqn+o9bBEdepYz6dBg
+gg1K5SQA3ZPT+MbyW7Xykk0jhi0cB/Jft9ODwG8/HoR4zDKAiJBVprLqVMuq0I4D
+KerlR+hNrHuFZtI0FH6e+12XZ9NNxBDyxVKAlxVmZUB1xzPfGiXWxcJpaj1fga9G
+yDn/e3lXHlGQaY48SrZdeVlDHAfBq13vFukRoEoetfAqfw0cn7t6Iy3qVs7h8HHz
+SD0XpxVGH0w3qoTcUcV0ZCjmad2iuQ9M8Vvzoky628orxxXFD6FZprpfSscPCcoo
+IVWk37LghwmpRJ6r2ZNzOaSuwcenygnF5JtIf2UzQexHXPu1Gf6q2WRs2h0cjz1H
+q+HMsGUqU6by/rIfxmo9R1atnX22ZsMQFMg0Wd9EhdVs+YeGdpUjNZucCIv0+ze1
+7EYQQPTKL3nl+2nRqVpz
+=46qm
 -----END PGP SIGNATURE-----
 """
 	control_file = DebianControlFile()
