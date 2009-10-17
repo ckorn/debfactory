@@ -41,6 +41,7 @@ import zlib
 import gzip
 import tempfile
 import re
+import md5
 from datetime import datetime
 from optparse import OptionParser
 from urllib2 import Request, urlopen, URLError, HTTPError
@@ -54,6 +55,7 @@ from lockfile import *
 Log = Logger()
 force_rpool = False
 check_last_modified = False
+check_list = None
 
 
 # Get the last modified time for an URL specified file	
@@ -76,6 +78,7 @@ def import_repository(archive_url, suite, requested_components \
 	"""
 	Import a repository into the dabase
 	"""
+	global check_list
 	# Get the base release file to check the list of available 
 	# architectures and components
 	Log.log("Importing repository: %s %s [%s] [%s]" \
@@ -90,7 +93,6 @@ def import_repository(archive_url, suite, requested_components \
 		return 1
 	Release = DebianControlFile(contents = f.read())    
 	f.close()
-
 	architectures = Release['Architectures'].split()
 	components = Release['Components'].split()
 	Log.log ("Available architectures: %s" % architectures)
@@ -242,7 +244,7 @@ def create_check_visibility_list(check_file):
 			check_list.append(re.compile(line.strip()))
 	return check_list
                                                                                                                                 
-def check_visibility(package,check_list):
+def check_visibility(package, check_list):
 	visibility = True                                                       
 	for check in check_list:
 		match = check.search(package)
@@ -252,7 +254,7 @@ def check_visibility(package,check_list):
 	return visibility	
 		
 def main():
-	global force_rpool, check_last_modified
+	global force_rpool, check_last_modified, check_list
 	parser = OptionParser()
 	parser.add_option("-d", "--database",
 		action = "store", type="string", dest="database",
@@ -282,7 +284,7 @@ def main():
 		help = "echo the sql statements")
 	(options, args) = parser.parse_args()
 	db_url = options.database or "sqlite:///apt2sql.db"
-	check_file = options.check_file
+	check_list = create_check_visibility_list(options.check_file)
 	if len(args) < 2:
 		print "Usage: %s " \
 			"archive_root_url suite [component1[, component2] ]" \
@@ -303,7 +305,8 @@ def main():
 	force_rpool = options.rpool
 	check_last_modified = options.check_last_modified
 	try:
-		lock = LockFile("apt2sql")
+		db_url_md5 = md5.new(db_url)
+		lock = LockFile("apt2sql_%s" % db_url_md5 .hexdigest())
 	except LockFile.AlreadyLockedError:
 		Log.log("Unable to acquire lock, exiting")
 		return
@@ -314,8 +317,7 @@ def main():
 		drop_all()
 		setup_all(True)
 
-	import_repository(archive_url, suite, components, architectures, \
-		check_file )
+	import_repository(archive_url, suite, components, architectures )
 		
 if __name__ == '__main__':
 	try:
