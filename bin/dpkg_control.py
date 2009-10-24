@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 #
 #  (C) Copyright 2009, GetDeb Team - https://launchpad.net/~getdeb
 #  --------------------------------------------------------------------
@@ -107,7 +108,7 @@ class DebianControlFile:
 		files = self['Files'][1:]
 		file_info_list = []
 		for file in files:
-			file_parts = file.split(" ")
+			file_parts = file.strip(" ").split(" ")
 			file_info = self.FileInfo(file_parts[0], file_parts[1], \
 				file_parts[len(file_parts)-1])
 			file_info_list.append(file_info)
@@ -261,59 +262,55 @@ class DebianControlFile:
 		return `self._deb_info`
 
 if __name__ == '__main__':
+	import sys
 	sample_control_file = """	
 -----BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA256
+Hash: SHA1
 
 Format: 1.8
-Date: Tue, 07 Jul 2009 02:28:23 +0200
-Source: yofrankie
-Binary: yofrankie
+Date: Thu, 22 Oct 2009 14:33:27 -0300
+Source: wormux
+Binary: wormux wormux-data
 Architecture: source
-Version: 1.1b-1~getdeb1
+Version: 1:0.8.5-1~getdeb1
 Distribution: karmic
 Urgency: low
-Maintainer: Christoph Korn <c_korn@gmx.de>
-Changed-By: Christoph Korn <c_korn@gmx.de>
+Maintainer: Debian Games Team <pkg-games-devel@lists.alioth.debian.org>
+Changed-By: Emilio Zopes <turl@tuxfamily.org>
 Description: 
- yofrankie  - 3D current generation platform game
+ wormux     - funny fight game on 2D maps
+ wormux-data - data files for the wormux game
 Changes: 
- yofrankie (1.1b-1~getdeb1) karmic; urgency=low
+ wormux (1:0.8.5-1~getdeb1) karmic; urgency=low
  .
-   * New upstream version.
+   * New Upstream Version
 Checksums-Sha1: 
- a7ddedc0718746e84dee4abbf5a9349dc2298f77 1715 yofrankie_1.1b-1~getdeb1.dsc
- eb295b42a4a14dcbcab26e0df8077267625cfca7 126347423 yofrankie_1.1b.orig.tar.gz
- 1e5d54930757965d74b605f58e03f40242894e36 7312 yofrankie_1.1b-1~getdeb1.diff.gz
+ f3735fe3dbfb8c148f7fb55845a1c5d5c2be6f49 1722 wormux_0.8.5-1~getdeb1.dsc
+ 97af263126cb79abeac69472abe6f1d11f708d57 80056084 wormux_0.8.5.orig.tar.gz
+ c07114ec6e5785b5453d4d8079fa815591928255 30114 wormux_0.8.5-1~getdeb1.diff.gz
 Checksums-Sha256: 
- 5e9ce202abb68a3c0b08d65c73062458651f3123211131ed02886759408ab24a 1715 yofrankie_1.1b-1~getdeb1.dsc
- cacb84f14de130780fab0b361b73a7429f9a69c7a9ae71f0d1ac8a15f7cb6cb8 126347423 yofrankie_1.1b.orig.tar.gz
- 631a5428dbc26c2c4d68ff3b7885a5d563c9401788dc5317a7490eb989ed8d31 7312 yofrankie_1.1b-1~getdeb1.diff.gz
+ 4d2404a01ef50b7c485dc5267dde09a9e243437e06d06f032d0f09c505c6cf18 1722 wormux_0.8.5-1~getdeb1.dsc
+ 19873f82507fd6f76ddd43278028b8e7d45281fd7a9a31099a74cbfcfc9d10cb 80056084 wormux_0.8.5.orig.tar.gz
+ 18cca660579abc01ac7d3ccdf4770be6532ad08fd88408ad8cd1265ec218ba8b 30114 wormux_0.8.5-1~getdeb1.diff.gz
 Files: 
- b4d257dc1fc4c49946fa5b2881bd0729 1715 games optional yofrankie_1.1b-1~getdeb1.dsc
- f149c32b22e7bdecec55eae3050ab37b 126347423 games optional yofrankie_1.1b.orig.tar.gz
- 23544378887c0c31b391b9e11072a40d 7312 games optional yofrankie_1.1b-1~getdeb1.diff.gz
+ 84fbe8d79d9f9d555edb2f8b8dc5a5c3 1722 games optional wormux_0.8.5-1~getdeb1.dsc
+ eb9eedd1018bd74d2109244bc5a84d71 80056084 games optional wormux_0.8.5.orig.tar.gz
+ 2f5915e1eae3655a99df202a2bb7dd07 30114 games optional wormux_0.8.5-1~getdeb1.diff.gz
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v1.4.9 (GNU/Linux)
 
-iQIcBAEBCAAGBQJK2K9bAAoJECT9/e/4vK3Q0dcP/iX0Gdy7xGI5D9BNMLLW/siu
-sHINE4258eqCP5N9H2PrFvPz1c4auKmtBia8co/BjI990qVan4hRRyKPYE8qbJ7a
-3tiuN+kQiWK3TarEZ/JuWUt5H0DI+oUWUuAsY2pGyS9GM/wMJsO9MD/ZbOodNvVm
-/g7GICGJ8Rlk6wb0YcywJOPCU2Bc23GcqqQQ2kqtwZPjpS8CdwtMv+pD+w9QeJ8T
-pZ3j4K7ZVnOPis7s8rUinx7bgTDICk8e05gdPwNRVn5jNBtqn+o9bBEdepYz6dBg
-gg1K5SQA3ZPT+MbyW7Xykk0jhi0cB/Jft9ODwG8/HoR4zDKAiJBVprLqVMuq0I4D
-KerlR+hNrHuFZtI0FH6e+12XZ9NNxBDyxVKAlxVmZUB1xzPfGiXWxcJpaj1fga9G
-yDn/e3lXHlGQaY48SrZdeVlDHAfBq13vFukRoEoetfAqfw0cn7t6Iy3qVs7h8HHz
-SD0XpxVGH0w3qoTcUcV0ZCjmad2iuQ9M8Vvzoky628orxxXFD6FZprpfSscPCcoo
-IVWk37LghwmpRJ6r2ZNzOaSuwcenygnF5JtIf2UzQexHXPu1Gf6q2WRs2h0cjz1H
-q+HMsGUqU6by/rIfxmo9R1atnX22ZsMQFMg0Wd9EhdVs+YeGdpUjNZucCIv0+ze1
-7EYQQPTKL3nl+2nRqVpz
-=46qm
+iEYEARECAAYFAkrgmbgACgkQ4X+nR70cqrRRgACgle7Whh7ATTH35n6KBQHGkyb0
+tHIAn3lmWOuobPG1bexavbq3h36Tm7yb
+=wNh8
 -----END PGP SIGNATURE-----
 """
-	control_file = DebianControlFile()
-	control_file.load_contents(contents=sample_control_file)
+	if len(sys.argv) > 1:
+		print "Parsing",sys.argv[1]
+		control_file = DebianControlFile(sys.argv[1])
+	else:
+		control_file = DebianControlFile(contents=sample_control_file)
+		#control_file.load_contents()
 	print control_file
 	print "------- Testing sample control file -----"
 	print "Source: %s" % control_file['Source']
