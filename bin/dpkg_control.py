@@ -151,7 +151,7 @@ class DebianControlFile:
 			for line in output_lines:		
 				if line.startswith("gpg: Good signature from"):
 					dummy, sign_author, dummy = line.split('"')	
-		return sign_author
+		return unicode(sign_author, 'utf-8', errors='replace')
 		
 	def verify_md5sum(self, source_dir=None):
 		"""
