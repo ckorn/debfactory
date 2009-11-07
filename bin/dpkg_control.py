@@ -105,6 +105,8 @@ class DebianControlFile:
 		self._deb_info = deb_info
 		
 	def files_list(self):
+		if not self['Files']:
+			return None
 		files = self['Files'][1:]
 		file_info_list = []
 		for file in files:
@@ -316,7 +318,10 @@ tHIAn3lmWOuobPG1bexavbq3h36Tm7yb
 	print "Source: %s" % control_file['Source']
 	print "Version: %s" % control_file.version()
 	print "Upstream Version: %s" % control_file.upstream_version()
-	print "Files:"
-	for file in control_file.files_list():
-		print "name: %s, size: %s, md5sum: %s" % (file.name, file.size, file.md5sum)        
+	print "Description: %s" % control_file['Description']
+	if control_file.files_list():
+		print "Files:"		
+		for file in control_file.files_list():
+			print "name: %s, size: %s, md5sum: %s" % \
+				(file.name, file.size, file.md5sum)        
 
