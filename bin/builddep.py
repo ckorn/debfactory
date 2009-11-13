@@ -34,11 +34,11 @@ def getUniqHeadersInFiles(files):
     f = open(file, 'r')
     for line in f.readlines():
       if line[0:8]=="#include":
-        if line.find("<") != -1:
+        if line.find("<") != -1 and line.find(">") != -1 and line[9] != '"':
           dummy, header = line.split("<", 1)
           header, dummy = header.split(">", 1)
           header = header.strip()
-          if not header in header_list:
+          if not header in header_list and header != "":
             header_list.append(header)
             file_header_list.append((file,header))
     f.close()
@@ -139,6 +139,7 @@ if __name__=="__main__":
     'deque', 'exception', 'cassert', 'cstdlib', 'stack', 'sys/param.h', 'dirent.h', \
     'unistd.h', 'fnmatch.h', 'ctype.h', 'limits.h']
 #  file_header_list = removeSkipHeaders(file_header_list)
+  existing_headers = list()
 
   print "Found "+str(len(file_header_list))+" unique headers."
 
@@ -162,19 +163,38 @@ if __name__=="__main__":
 
     if len(devs) == 0:
       print "Warning: no dev package for header '" + file_header[1] + "' in file '" + file_header[0] + "' found!"
-      con = raw_input('Continue (y/n)? ')
-      if con=="n":
-        sys.exit()
+      #con = raw_input('Continue (y/n)? ')
+      #if con=="n":
+      #  sys.exit()
     else:
       if not isInStdLib(devs):
-        defaultSelection = printDevs(devs, dev_list)
-        print file_header[0],file_header[1]
-        chosenDev = chooseDevPackage(devs, i, numHeaders, defaultSelection)
-        if chosenDev != None and not chosenDev in dev_list:
-          dev_list.append(chosenDev)
-          useless_header_list.extend(findUselessHeaders(chosenDev, [header for (dummy, header) in file_header_list]))
+        file_header_devs = (file_header[0], file_header[1], devs)
+        existing_headers.append(file_header_devs)
       else:
         print "Header " + file_header[1] + " is in standard lib"
+
+    i = i + 1
+
+  numHeaders = len(existing_headers)
+  i = 1
+
+  for file_header_devs in existing_headers:
+    file_header = (file_header_devs[0], file_header_devs[1])
+    devs = file_header_devs[2]
+
+    print
+    dummy, header = file_header
+    if header in useless_header_list:
+      print 'Skipped header "' + header + '" already which already is in a dev package'
+      i += 1
+      continue
+
+    defaultSelection = printDevs(devs, dev_list)
+    print file_header[0],file_header[1]
+    chosenDev = chooseDevPackage(devs, i, numHeaders, defaultSelection)
+    if chosenDev != None and not chosenDev in dev_list:
+      dev_list.append(chosenDev)
+      useless_header_list.extend(findUselessHeaders(chosenDev, [header for (dummy, header) in file_header_list]))
 
     i = i + 1
 

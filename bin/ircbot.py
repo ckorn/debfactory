@@ -153,6 +153,9 @@ def start_bot():
 	while 1:
 		data = sock.recv(4096)
 		if data != "":
+			if data.startswith('PING'):
+				data = data.replace('PING', 'PONG')
+				sock.send(data + "\r\n")
 			data_lowercase = data.lower()
 			channel_list = channels.split(',')
 			for channel in channel_list:

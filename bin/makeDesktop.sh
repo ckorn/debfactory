@@ -24,6 +24,7 @@ cat <<-EOF > $1
 	Categories=Office; // Applications -> Office ->
 	Categories=System; // Applications -> System Tools ->
 	Categories=Education; // Applications -> Education ->
+	Categories=Science; // Applications -> Science ->
 EOF
 
 gedit $1
