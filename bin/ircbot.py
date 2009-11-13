@@ -123,19 +123,17 @@ def send_youtube_information(msg, sock):
 		if http_response.status != 200:
 			print "Error occured when fetching data"
 			continue
-		data = http_response.read(1024)
-		data = data.split('\n')
+		data = http_response.read(4096)
 
-		for line in data:
-			titles = re.finditer('<title>(?P<title>.*)</title>', line)
+		titles = re.finditer('<title>(?P<title>.*)</title>', data, re.DOTALL)
 
-			found = False
-			for title in titles:
-				sock.send("PRIVMSG " + channels + u" :\u0002" + title.group('title') + \
-				          u"\u000F www.youtube.com" + match.group('link') + "\r\n")
-				found = True
-				break
-			if found: break
+		for title in titles:
+			video_title = title.group('title')
+			video_title = video_title.split('-', 1)
+			video_title = video_title[1].strip()
+			msg = "PRIVMSG " + channels + u" :\u0002" + video_title + \
+			          u"\u000F www.youtube.com" + match.group('link') + "\r\n"
+			sock.send(msg)
 
 		http_connection.close()
 	return
