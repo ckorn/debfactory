@@ -25,7 +25,7 @@ Usage:
         [archive_root_url suite [component1[, component2] ]]
         
 Example:
-    apt2sql.py http://archive.ubuntu.com/ubuntu jaunty
+    apt2sql.py http://archive.ubuntu.com/ubuntu karmic
     
 """
 
@@ -42,6 +42,7 @@ import gzip
 import tempfile
 import re
 import md5
+import types
 from datetime import datetime
 from optparse import OptionParser
 from urllib2 import Request, urlopen, URLError, HTTPError
@@ -177,7 +178,10 @@ def import_packages_file(archive_url, packagelist, packages_file):
 		source = control['Source']
 		version = control['Version']
 		architecture = control['Architecture']
-		description = 	control['Description'][0]
+		description = 	control['Description']
+		# We get a list unless the description detail is void
+		if type(description) == types.ListType:
+			description = 	description[0]
 		homepage = 	control['homepage']	
 		package = Package.query.filter_by( \
 			package = package_name, \
