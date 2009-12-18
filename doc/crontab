@@ -1,8 +1,7 @@
 # m h  dom mon dow   command
-*/2 * * * * $HOME/bin/incoming_check.py intrepid >> $HOME/var/log/incoming_intrepid_check.log 2>&1
-*/3 * * * * $HOME/bin/prebuild_check.py intrepid >> $HOME/var/log/prebuild_check.log 2>&1
-*/5 * * * * $HOME/bin/build_local_apt_packages.sh intrepid >/dev/null 2>&1
+# Daily GPG import
+0 8 * * * $HOME/debfactory/bin/import_uploaders_gpg_keys.py
 
-*/2 * * * * $HOME/bin/incoming_check.py hardy >> $HOME/var/log/incoming_hardy_check.log 2>&1
-*/3 * * * * $HOME/bin/prebuild_check.py hardy >> $HOME/var/log/prebuild_hardy_check.log 2>&1
-*/5 * * * * $HOME/bin/build_local_apt_packages.sh hardy >/dev/null 2>&1
+# New scripts for the repository
+*/2 * * * * $HOME/debfactory/bin/check_incoming.py -q >> $HOME/var/log/check_incoming.log 2>&1
+*/2 * * * * $HOME/debfactory/bin/check_pre_build.py -q >> $HOME/var/log/check_pre_build.log 2>&1

@@ -145,7 +145,8 @@ class DebianControlFile:
 			% (keyring, self._filename)
 
 		sign_author = None
-		(rc, output) = commands.getstatusoutput(gpg_cmd)	
+		(rc, output) = commands.getstatusoutput(gpg_cmd)
+		output = unicode(output, 'utf-8')	
 		if verbose:
 			print output
 		output_lines = output.split("\n")		
