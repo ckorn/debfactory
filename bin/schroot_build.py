@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-#   (C) Copyright 2006-2009, GetDeb Team - https://launchpad.net/~getdeb
+#   (C) Copyright 2006-2010, GetDeb Team - https://launchpad.net/~getdeb
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
@@ -17,7 +17,8 @@
 #
 """
 chroot build helper script
- This script automates the creation of a file based schroot image
+
+This script automates the creation of a file based schroot image
 
  The script performs the following actions:
 	- Check/install the pre-required packages (fakeroot, schroot, etc)
@@ -31,16 +32,21 @@ import sys
 import shutil
 import string
 import commands
+import glob
 
-available_releases = ("hardy", "intrepid","jaunty", "karmic", "lucid")
+
 available_archs = ("i386", "amd64")
 
 apt_mirror = 'localhost:3142'
 
-chrootDirectory = None
-releaseVersion = None
-architecture = None
-usingSbuild = 0
+class Config(object):
+	chrootDirectory = None
+	releaseVersion = None
+	architecture = None
+	usingSbuild = 0
+	provider = "ubuntu"
+
+appConfig = Config()
 
 print 
 print "###### schroot build helper script"
@@ -55,28 +61,37 @@ lang = os.environ['LANG']
 os.putenv('LANG', 'C') # We use system commands, use a reliable language
 
 def parse_options():
-	global chrootDirectory, releaseVersion, architecture, usingSbuild
+	global appConfig
 	for args in sys.argv:
 		if args.find('-c=') != -1:
-			chrootDirectory = args.replace('-c=', '')
-			print "Using chroot directory:", chrootDirectory
+			appConfig.chrootDirectory = args.replace('-c=', '')
+			print "Using chroot directory:", appConfig.chrootDirectory
 			continue
 		if args.find('-r=') != -1:
-			releaseVersion = args.replace('-r=', '')
-			print "Trying release:",releaseVersion
+			appConfig.releaseVersion = args.replace('-r=', '')
+			print "Trying release:", appConfig.releaseVersion
 			continue
 		if args.find('-a=') != -1:
-			architecture = args.replace('-a=', '')
-			print "Trying architecture:",architecture
+			appConfig.architecture = args.replace('-a=', '')
+			print "Trying architecture:", appConfig.architecture
 			continue
 		if args == '-b':
-			usingSbuild = 1
+			appConfig.usingSbuild = 1
 			print "sBuild options enabled"
 			continue
+		if args.find('-p=') != -1:
+			appConfig.provider = args.replace('-p=', '')
+			print "Replacing provider"
+			continue		
 
 def check_and_install_package(package):
-	has_package=int(commands.getoutput('dpkg -l '+package+' 2>&1 | grep -c "^ii"'))
-	if not has_package:
+	""" 
+	check if a package is installed, if not present the option to install it
+	"""
+	is_installed = int(commands.getoutput('dpkg -l '+package+' 2>&1 | grep -c "^ii"'))
+	if is_installed:
+		print "Package "+package+" is installed."
+	else:
 		print "Package "+package+" is required but not installed."
 		install = ""
 		while install not in ("y", "n"):
@@ -85,14 +100,12 @@ def check_and_install_package(package):
 				print "Exiting on missing package."
 				sys.exit(1);
 		os.system('sudo apt-get install -y '+package)
-	else:
-		print "Package "+package+" is installed."
 
 def get_host_release():
 	"""
-	Get the system release (lsb_release -c)
+	Get the system release (lsb_release -cs)
 	"""
-	release = commands.getoutput('lsb_release -c| cut -f2').strip("\r\n")
+	release = commands.getoutput('lsb_release -cs').strip("\r\n")
 	return release
 
 def check_create_dir(name):
@@ -111,7 +124,7 @@ def copy_to_chroot(fname, chrootdir):
 
 # Check requirements
 def check_requirements():
-	global usingSbuild
+	global appConfig
 	"""
 	Check script requirements
 	"""
@@ -120,15 +133,15 @@ def check_requirements():
 	check_and_install_package("schroot")
 	check_and_install_package("debootstrap")
 	check_and_install_package("apt-cacher-ng")
-	if usingSbuild == 1:
+	if appConfig.usingSbuild == 1:
 		check_and_install_package("sbuild")
 	print
 
 def check_base_dir():
-	global chrootDirectory 
-	if chrootDirectory:
-		check_create_dir(chrootDirectory)
-		return chrootDirectory
+	global appConfig
+	if appConfig.chrootDirectory:
+		check_create_dir(appConfig.chrootDirectory)
+		return appConfig.chrootDirectory
 	base_dir = "/home/schroot"
 	new_base_dir = raw_input("Please enter the chroot install base directory\n["+base_dir+"]: ")
 	basedir = new_base_dir or base_dir
@@ -136,20 +149,22 @@ def check_base_dir():
 	return basedir
 
 def check_chroot_release(basedir):
-	global releaseVersion, architecture
-	base_release = get_host_release()
-	baserelease = ""
-	if releaseVersion:
-		baserelease = releaseVersion
+	scripts_dir = '/usr/share/debootstrap/scripts/'
+	global appConfig , available_releases
+	baserelease = ''
+	base_release = appConfig.releaseVersion or get_host_release()
+	available_releases = [x.replace(scripts_dir,'') \
+						 for x in glob.glob(scripts_dir+"*") if '.' not in x]
+	print 'Available releases (fount at %s):\n %s' % (scripts_dir, ','.join(available_releases))
 	while baserelease not in available_releases:
-		new_base_release = raw_input("Please enter the chroot release version, options are: "+string.join(available_releases)+"\n["+base_release+"]: ")
+		new_base_release = raw_input("Please enter the chroot release version ["+base_release+"]: ")
 		baserelease = new_base_release or base_release
 	base_arch = "i386"
 	basearch = ""
-	if architecture:
-		basearch = architecture
+	if appConfig.architecture:
+		basearch = appConfig.architecture
 	while basearch not in available_archs:
-		new_base_arch = raw_input("Please enter the chroot architecture, options are: "+string.join(available_archs)+"\n["+base_arch+"]: ")
+		new_base_arch = raw_input("Please enter the chroot architecture, options are: "+','.join(available_archs)+"\n["+base_arch+"]: ")
 		basearch = new_base_arch or base_arch
 
 	chrootdir = os.path.join(basedir, baserelease+"."+basearch)
@@ -157,9 +172,11 @@ def check_chroot_release(basedir):
 	return (baserelease, basearch, chrootdir)
 
 def debootstrap(release, arch, chrootdir):
-	varpath = os.path.join(chrootdir,"var")
-	print "Installing base system for "+release+" ["+arch+"] into "+ chrootdir
-	os.system("debootstrap --variant=buildd --arch "+arch+" "+release+" "+chrootdir+" http://"+apt_mirror+"/ubuntu/");
+	global appConfig
+	print "provider=", appConfig.provider
+	print "Installing base system for "+release+" ["+arch+"] into "+ chrootdir	
+	return os.system("debootstrap --variant=buildd --arch "+arch+" "+release+\
+		" "+chrootdir+" http://"+apt_mirror+"/"+appConfig.provider+"/");
 
 def chroot_config_files_update(chrootdir, release, arch):
 	"""
@@ -201,9 +218,9 @@ deb-src http://mirror/ubuntu release-security multiverse
 	os.system("echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
 
 def chroot_postinstall_update(chrootdir, release, arch):
-	global usingSbuild
+	global appConfig
 	"""
-	Perform postinstall update actions"
+	Perform post-install update actions"
 	"""
 	print "Post install actions for the chroot image"
 	print "Installing some support tools"
@@ -211,14 +228,14 @@ def chroot_postinstall_update(chrootdir, release, arch):
 	os.system("chroot "+chrootdir+" apt-get -y --force-yes install gnupg apt-utils")
 	os.system("chroot "+chrootdir+" apt-get -y update")
 	os.system("chroot "+chrootdir+" locale-gen "+lang)	
-	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install wget dh-make fakeroot cdbs sudo nano")
+	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install wget dh-make fakeroot cdbs sudo")
 	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install devscripts vim")
 	os.system("mount --bind /proc "+chrootdir +"/proc")
 	os.system("chroot "+chrootdir+" sudo DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install console-setup")
 	os.system("umount "+chrootdir +"/proc")
 	# We need to install build-essential for hardy, it is not contained on the buildd variant
 	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install build-essential")
-	os.system("chroot "+chrootdir+" apt-get -y upgrade")
+	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends upgrade")
 	os.system("chroot "+chrootdir+" apt-get clean")
 	print "Creating the schroot image "+chrootdir+".tar.gz, please be patient..."
 	os.system("tar -C "+chrootdir+" -czf "+chrootdir+".tar.gz .")
@@ -231,7 +248,7 @@ def chroot_postinstall_update(chrootdir, release, arch):
 		schroot_conf += "type=file\n"
 		schroot_conf += "file="+chrootdir+".tar.gz\n"
 		schroot_conf += "groups=admin\n"
-		if usingSbuild == 1:
+		if appConfig.usingSbuild == 1:
 			schroot_conf += "root-groups=sbuild\n"
 		if arch=="i386":
 			schroot_conf += "personality=linux32\n" 
@@ -248,7 +265,10 @@ my_release = get_host_release()
 check_requirements()
 basedir = check_base_dir()
 (release, arch, chrootdir) = check_chroot_release(basedir)
-debootstrap(release, arch, chrootdir)
+rc = debootstrap(release, arch, chrootdir)
+if rc != 0:
+	print "Debootstrap failed!"
+	sys.exit(1)
 chroot_config_files_update(chrootdir, release, arch)
 chroot_postinstall_update(chrootdir, release, arch)
 
