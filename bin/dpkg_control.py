@@ -140,7 +140,8 @@ class DebianControlFile:
 		@param keyring: they keyring to be used for verification
 		@return: the signature author or None
 		"""
-		gpg_cmd = "LANG=en_US.UTF-8 gpg --no-options --no-default-keyring "\
+		gpg_cmd = "LANGUAGE=en_US.UTF-8 LANG=en_US.UTF-8 " \
+		      "gpg --no-options --no-default-keyring " \
 			"--keyring %s --verify --logger-fd=1 %s" \
 			% (keyring, self._filename)
 
