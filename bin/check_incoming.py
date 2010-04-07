@@ -38,7 +38,7 @@ import glob
 from optparse import OptionParser
 from configobj import ConfigObj
 from localaux import *
-from dpkg_control import *
+from dpkg_control import DebianControlFile
 from lockfile import *
 
 config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
@@ -118,7 +118,7 @@ def check_source_changes(release, component, filename):
         # FIXME: This should never happen but we should send a message
         # anyway
         return	
-			
+
     if not os.path.exists("%s/%s" % (source_dir, orig_file)):
         pre_build_orig = "%s/%s" % (full_pre_build_dir, orig_file)
         if not os.path.exists(pre_build_orig):
@@ -167,21 +167,21 @@ def check_incoming_dir():
     """	
     file_list = glob.glob("%s/*" % (ftp_incoming_dir))
     for file in file_list:
-    	if os.path.isdir(file):
-    		release = os.path.basename(file)
-    		check_release_dir(release)
-	
+        if os.path.isdir(file):
+            release = os.path.basename(file)
+            check_release_dir(release)
+
 def check_release_dir(release):
-	"""
-	Check a release directory for components
-	"""
-	file_list = glob.glob("%s/%s/*" \
-		% (ftp_incoming_dir, release))	
-	for file in file_list:
-		if os.path.isdir(file):
-			component = os.path.basename(file)
-			check_release_component_dir(release, component)
-	
+    """
+    Check a release directory for components
+    """
+    file_list = glob.glob("%s/%s/*" \
+    	% (ftp_incoming_dir, release))	
+    for file in file_list:
+        if os.path.isdir(file):
+            component = os.path.basename(file)
+            check_release_component_dir(release, component)
+            
 def check_release_component_dir(release, component):
     """ 
     Check a release/component directory
@@ -189,25 +189,24 @@ def check_release_component_dir(release, component):
     	files older than CLEANUP_TIME will be removed
     """
     global check_only
-    
     Log.log("Checking %s/%s" % (release, component))
     file_list = glob.glob("%s/%s/%s/*" \
     	% (ftp_incoming_dir, release, component))
-    	
+
     for fname in file_list:
-    	if not os.path.exists(fname): # File was removed ???
-    		continue
-    	if fname.endswith("_source.changes"):
-    		check_source_changes(release, component, os.path.basename(fname))	
-    		# There could be an error, remove it anyway
-    		if not check_only and os.path.exists(fname):
-    			os.unlink(fname)
-    	else:
-    		if not check_only and time.time() - os.path.getmtime(fname) > CLEANUP_TIME:
-    			print "Removing old file: %s" % fname
-    			os.unlink(fname)
+        if not os.path.exists(fname): # File was removed ???
+            continue
+        if fname.endswith("_source.changes"):
+            check_source_changes(release, component, os.path.basename(fname))	
+            # There could be an error, remove it anyway
+            if not check_only and os.path.exists(fname):
+                os.unlink(fname)
+        else:
+            if not check_only and time.time() - os.path.getmtime(fname) > CLEANUP_TIME:
+                print "Removing old file: %s" % fname
+                os.unlink(fname)
     Log.log("Done")
-	
+
 def main():
     global check_only
     
@@ -222,18 +221,18 @@ def main():
     Log.verbose = options.verbose
     check_only = options.check_only	
     try:
-    	lock = LockFile("ftp_incoming")
+        lock = LockFile("ftp_incoming")
     except LockFile.AlreadyLockedError:
-    	Log.log("Unable to acquire lock, exiting")
-    	return
+        Log.log("Unable to acquire lock, exiting")
+        return
     
     # Check and process the incoming directoy
     check_incoming_dir()
-	
+
 if __name__ == '__main__':
-	try:
-		main()
-	except KeyboardInterrupt:
-		print 'User requested interrupt'
-		sys.exit(1)
+    try:
+        main()
+    except KeyboardInterrupt:
+        print 'User requested interrupt'
+        sys.exit(1)
 
