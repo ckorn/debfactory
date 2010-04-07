@@ -1,0 +1,56 @@
+This document describes how to setup an automated build server using the 
+debfactory scripts.
+
+We will use anomymous FTP to receive the source files to be build.
+vsftpd was selected because it is a main package, most likely to have security updates on a timely manner.
+	sudo apt-get install vsftpd
+
+Now we need to tweak the configuration file because we will need to accept 
+anonymous ftp uploads for the packages, edit /etc/vsftpd.conf and apply 
+the following settings:
+Change:
+anonymous_enable=YES
+write_enable=YES
+anon_upload_enable=YES
+ftpd_banner=Welcome to my local FTP service.
+Append:
+anon_other_write_enable=YES
+anon_root=/home/ftp
+anon_umask=0000
+
+sudo service vsftpd restart
+
+Create the build user/group:
+	sudo groupadd build
+	sudo useradd build -g build -m -s /bin/bash
+  
+Now let's create the directory required for the incoming packages:
+	release=lucid
+	sudo mkdir -m770 -p /home/ftp/incoming/$release/{apps,games}
+	sudo chown ftp:build  /home/ftp/incoming/$release/{apps,games}
+	sudo mkdir -m755 -p /build/logs
+	sudo chown -R build /build
+	sudo debfactory/bin/schroot_build.py -d $release -a i386 -c /home/schroot -s
+	sudo debfactory/bin/schroot_build.py -d $release -a amd64 -c /home/schroot -s
+
+Add build to the sbuild group:
+	sudo usermod -a -G sbuild build
+	
+Add a dput configuration ponting to the localhost ftp:
+	Edit ~/.dput.cf, append:
+[lucid-getdeb-apps]
+fqdn=localhost
+login=anonymous
+incoming=incoming/lucid/apps
+method=ftp
+allow_unsigned_uploads=0
+allow_dcut=1
+progress_indicator=2
+passive_ftp=1
+
+*** Testing the ABS ***
+Upload a source package:
+  	dput lucid-getdeb-apps package_source.changes
+Run the check incoming script:
+	debfactory/bin/check_incoming.py
+	

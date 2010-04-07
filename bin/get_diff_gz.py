@@ -13,12 +13,14 @@ def download(p,d):
 
 def get_base_package_name():
 	tmp = glob.glob('./*.orig.tar.gz')
+	if not tmp:
+		tmp = glob.glob('./*.orig.tar.bz2')
 	if not tmp: return None
 	return os.path.basename(tmp[0])
 
 def search_on_getdeb(orig_file, release):
-	http_connection = HTTPConnection('archive.getdeb.net')
-	download_dir = 'http://archive.getdeb.net/getdeb/ubuntu/' + release + '/' + orig_file[0:2] + '/'
+	http_connection = HTTPConnection('mirror.informatik.uni-mannheim.de')
+	download_dir = 'http://mirror.informatik.uni-mannheim.de/pub/mirrors/getdeb/ubuntu/' + release + '/' + orig_file[0:2] + '/'
 	http_connection.request('GET', download_dir)
 	http_response = http_connection.getresponse()
 	if http_response.status != 200: return None
@@ -44,9 +46,9 @@ def search_on_getdeb(orig_file, release):
 	return p_d
 
 def search_on_getdeb2(orig_file, release):
-	http_connection = HTTPConnection('archive.getdeb.net')
+	http_connection = HTTPConnection('mirror.informatik.uni-mannheim.de')
 	basename = orig_file.split('_')[0]
-	download_dir = 'http://archive.getdeb.net/getdeb/ubuntu/pool/apps/' + orig_file[0] + \
+	download_dir = 'http://mirror.informatik.uni-mannheim.de/pub/mirrors/getdeb/ubuntu/pool/apps/' + orig_file[0] + \
 	  '/' + basename + '/'
 	http_connection.request('GET', download_dir)
 	http_response = http_connection.getresponse()
@@ -72,9 +74,9 @@ def search_on_getdeb2(orig_file, release):
 	return p_d
 
 def search_on_playdeb(orig_file, release):
-	http_connection = HTTPConnection('archive.getdeb.net')
+	http_connection = HTTPConnection('mirror.informatik.uni-mannheim.de')
 	basename = orig_file.split('_')[0]
-	download_dir = 'http://archive.getdeb.net/getdeb/ubuntu/pool/games/' + orig_file[0] + \
+	download_dir = 'http://mirror.informatik.uni-mannheim.de/pub/mirrors/getdeb/ubuntu/pool/games/' + orig_file[0] + \
 	  '/' + basename + '/'
 	http_connection.request('GET', download_dir)
 	http_response = http_connection.getresponse()
@@ -101,19 +103,23 @@ def search_on_playdeb(orig_file, release):
 
 def applyDiff(p,orig):
 	package_name = orig.split('_')[0]
-	version = orig.split('_')[1][:-12]
+	version = orig.split('_')[1].split('.orig')[0]
 	dir_name = package_name + '-' + version
 	if not os.path.exists(dir_name):
-		print 'tar xzf ' + orig
-		os.system('tar xzf ' + orig)
+		if orig.endswith(".gz"):
+			print 'tar xzf ' + orig
+			os.system('tar xzf ' + orig)
+		else:
+			print 'tar xjf ' + orig
+			os.system('tar xjf ' + orig)
 		if not os.path.exists(dir_name):
 			tmp = glob.glob('./' + package_name + '*')
 			for t in tmp:
 				if os.path.isdir(t):
 					os.rename(t, dir_name)
 	if not os.path.exists(dir_name + '/debian'):
-		print 'cd ' + dir_name + ' ; zcat ../' + p + '*.diff.gz | patch -p1 ; dch -d -D jaunty'
-		os.system('cd ' + dir_name + ' ; zcat ../' + p + '*.diff.gz | patch -p1 ; dch -d -D jaunty')
+		print 'cd ' + dir_name + ' ; zcat ../' + p + '*.diff.gz | patch -p1 ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"'
+		os.system('cd ' + dir_name + ' ; zcat ../' + p + '*.diff.gz | patch -p1 ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"')
 
 if __name__ == "__main__":
 	orig_file = get_base_package_name()

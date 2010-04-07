@@ -30,59 +30,40 @@ This script automates the creation of a file based schroot image
 import os
 import sys
 import shutil
-import string
 import commands
 import glob
-
+from optparse import OptionParser
 
 available_archs = ("i386", "amd64")
 
 apt_mirror = 'localhost:3142'
 
-class Config(object):
-	chrootDirectory = None
-	releaseVersion = None
-	architecture = None
-	usingSbuild = 0
-	provider = "ubuntu"
-
-appConfig = Config()
-
-print 
-print "###### schroot build helper script"
-print
-
-# We need root
-if os.getuid() != 0 :
-	print 'This script needs to be run as root/sudo !'
-	sys.exit(2)
-
-lang = os.environ['LANG']
-os.putenv('LANG', 'C') # We use system commands, use a reliable language
-
-def parse_options():
-	global appConfig
-	for args in sys.argv:
-		if args.find('-c=') != -1:
-			appConfig.chrootDirectory = args.replace('-c=', '')
-			print "Using chroot directory:", appConfig.chrootDirectory
-			continue
-		if args.find('-r=') != -1:
-			appConfig.releaseVersion = args.replace('-r=', '')
-			print "Trying release:", appConfig.releaseVersion
-			continue
-		if args.find('-a=') != -1:
-			appConfig.architecture = args.replace('-a=', '')
-			print "Trying architecture:", appConfig.architecture
-			continue
-		if args == '-b':
-			appConfig.usingSbuild = 1
-			print "sBuild options enabled"
-			continue
-		if args.find('-p=') != -1:
-			appConfig.provider = args.replace('-p=', '')
-			print "Replacing provider"
-			continue		
+def command_line_parser():
+	""" 
+	Returns an option parser object with the available 
+	command line parameters
+	"""        
+	parser = OptionParser()
+	parser.add_option("-c", "--chroot-dir",
+	    action = "store", type="string", dest="chroot_dir", \
+	    help = "Directory to store the chroot image file", \
+	    default = '', \
+	    )                        
+	parser.add_option("-d", "--dist", \
+	    action = "store", type="string", dest="dist", \
+	    help = "Target distribution release for debootstrap")
+	parser.add_option("-a", "--arch", \
+	    action = "store", type="string", dest="arch", \
+	    help = "Target architecture for debootstrap")
+	parser.add_option("-s", "--sbioçd", \
+	    action = "store_true", dest="sbuild", default=False, \
+	    help = "Configure for sbuild")            
+	parser.add_option("-p", "--provider", \
+	    action = "store", type="string", dest="provider", \
+	    help = "Distribution provider ([ubuntu]| debian)", \
+	    default='ubuntu')
+	
+	return parser
 
 def check_and_install_package(package):
 	""" 
@@ -124,7 +105,7 @@ def copy_to_chroot(fname, chrootdir):
 
 # Check requirements
 def check_requirements():
-	global appConfig
+	global options
 	"""
 	Check script requirements
 	"""
@@ -133,15 +114,15 @@ def check_requirements():
 	check_and_install_package("schroot")
 	check_and_install_package("debootstrap")
 	check_and_install_package("apt-cacher-ng")
-	if appConfig.usingSbuild == 1:
+	if options.sbuild:
 		check_and_install_package("sbuild")
 	print
 
 def check_base_dir():
-	global appConfig
-	if appConfig.chrootDirectory:
-		check_create_dir(appConfig.chrootDirectory)
-		return appConfig.chrootDirectory
+	global options
+	if options.chroot_dir:
+		check_create_dir(options.chroot_dir)
+		return options.chroot_dir
 	base_dir = "/home/schroot"
 	new_base_dir = raw_input("Please enter the chroot install base directory\n["+base_dir+"]: ")
 	basedir = new_base_dir or base_dir
@@ -149,40 +130,37 @@ def check_base_dir():
 	return basedir
 
 def check_chroot_release(basedir):
+	global options, available_release
 	scripts_dir = '/usr/share/debootstrap/scripts/'
-	global appConfig , available_releases
-	baserelease = ''
-	base_release = appConfig.releaseVersion or get_host_release()
+	default_release = options.dist or get_host_release()
 	available_releases = [x.replace(scripts_dir,'') \
 						 for x in glob.glob(scripts_dir+"*") if '.' not in x]
 	print 'Available releases (fount at %s):\n %s' % (scripts_dir, ','.join(available_releases))
-	while baserelease not in available_releases:
-		new_base_release = raw_input("Please enter the chroot release version ["+base_release+"]: ")
-		baserelease = new_base_release or base_release
-	base_arch = "i386"
-	basearch = ""
-	if appConfig.architecture:
-		basearch = appConfig.architecture
-	while basearch not in available_archs:
-		new_base_arch = raw_input("Please enter the chroot architecture, options are: "+','.join(available_archs)+"\n["+base_arch+"]: ")
-		basearch = new_base_arch or base_arch
+	selected_release = options.dist
+	while selected_release not in available_releases:
+		selected_release = raw_input("Please enter the chroot release version ["+default_release+"]: ")
+		selected_release = selected_release or default_release
+	default_arch = options.arch or "i386"
+	selected_arch = options.arch
+	while selected_arch not in available_archs:
+		selected_arch = raw_input("Please enter the chroot architecture, options are: "+','.join(available_archs)+"\n["+default_arch+"]: ")
+		selected_arch = selected_arch or default_arch
 
-	chrootdir = os.path.join(basedir, baserelease+"."+basearch)
+	chrootdir = os.path.join(basedir, selected_release+"."+selected_arch)
 	check_create_dir(chrootdir)
-	return (baserelease, basearch, chrootdir)
+	return (selected_release, selected_arch, chrootdir)
 
 def debootstrap(release, arch, chrootdir):
-	global appConfig
-	print "provider=", appConfig.provider
+	global options
 	print "Installing base system for "+release+" ["+arch+"] into "+ chrootdir	
 	return os.system("debootstrap --variant=buildd --arch "+arch+" "+release+\
-		" "+chrootdir+" http://"+apt_mirror+"/"+appConfig.provider+"/");
+		" "+chrootdir+" http://"+apt_mirror+"/"+options.provider+"/");
 
 def chroot_config_files_update(chrootdir, release, arch):
-	"""
-	Updates config files fromt he chrootdir environment
-	"""
-	default_sources="""
+    """
+    Updates config files fromt he chrootdir environment
+    """
+    default_sources="""
 deb http://mirror/ubuntu/ release main restricted
 deb-src http://mirror/ubuntu/ release main restricted
 deb http://mirror/ubuntu/ release-updates main restricted
@@ -205,20 +183,20 @@ deb-src http://mirror/ubuntu release-security universe
 deb http://mirror/ubuntu release-security multiverse
 deb-src http://mirror/ubuntu release-security multiverse
 	"""
-	apt_mirror = "localhost:3142" 
-	default_sources = default_sources.replace("mirror", apt_mirror)
-	default_sources = default_sources.replace("release", release)
-	FILE = open(chrootdir+"/etc/apt/sources.list","w")
-	FILE.writelines(default_sources)
-	FILE.close()
-	copy_to_chroot("etc/resolv.conf", chrootdir);
-	copy_to_chroot("etc/hosts", chrootdir);
-	copy_to_chroot("etc/sudoers", chrootdir);
-
-	os.system("echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
+    apt_mirror = "localhost:3142" 
+    default_sources = default_sources.replace("mirror", apt_mirror)
+    default_sources = default_sources.replace("release", release)
+    if options.provider == 'ubuntu':
+    	FILE = open(chrootdir+"/etc/apt/sources.list","w")
+    	FILE.writelines(default_sources)
+    	FILE.close()
+    copy_to_chroot("etc/resolv.conf", chrootdir);
+    copy_to_chroot("etc/hosts", chrootdir);
+    copy_to_chroot("etc/sudoers", chrootdir);
+    os.system("echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
 
 def chroot_postinstall_update(chrootdir, release, arch):
-	global appConfig
+	global options
 	"""
 	Perform post-install update actions"
 	"""
@@ -248,7 +226,7 @@ def chroot_postinstall_update(chrootdir, release, arch):
 		schroot_conf += "type=file\n"
 		schroot_conf += "file="+chrootdir+".tar.gz\n"
 		schroot_conf += "groups=admin\n"
-		if appConfig.usingSbuild == 1:
+		if options.sbuild == 1:
 			schroot_conf += "root-groups=sbuild\n"
 		if arch=="i386":
 			schroot_conf += "personality=linux32\n" 
@@ -259,8 +237,21 @@ def chroot_postinstall_update(chrootdir, release, arch):
 	print ""
 	print "You can now use your schroot with:\n\tschroot -c "+release+"."+arch+" -p"
 
-# This is the main app
-parse_options()
+
+print 
+print "###### schroot build helper script"
+print
+
+# We need root
+if os.getuid() != 0 :
+	print 'This script needs to be run with root privileges !'
+	sys.exit(2)
+
+lang = os.environ['LANG']
+os.putenv('LANG', 'C') # We rely on system commands output
+
+(options, args) = command_line_parser().parse_args()
+
 my_release = get_host_release()
 check_requirements()
 basedir = check_base_dir()

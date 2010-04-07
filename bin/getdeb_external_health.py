@@ -49,24 +49,38 @@ class testit(Thread):
 		rand = random.randint(0,9999999)
 		directory = self._source["Package"] + str(rand)
 		diff = "/tmp/"+directory+"/bla.diff.gz"
+		debianTarGz = "/tmp/"+directory+"/"+directory+"/debian.tar.gz"
 		xmlfile = "/tmp/"+directory+"/dehs.xml"
 
 		self.exe("cd /tmp ; rm -rf "+directory)
 
 		self.exe("cd /tmp ; mkdir "+directory)
-		self.exe("cd /tmp/"+directory+" ; wget -q -O "+diff+" "+archiveUrl+self._source["Directory"]+"/"+self._source["diff.gz"][1])
-		p = os.popen("cd /tmp/"+directory+" ; lsdiff -z "+diff+" | grep debian/watch")
-		watch = p.readline().strip('\r\n')
-		p.close()
-		if watch == "":
-			#print "No debian/watch file found. Skipping."
-			#print
-			nowatch.append(self._source)
-			self.exe("cd /tmp/ ; rm -rf "+directory)
-			return
+		if self._source["patch"][1].endswith("diff.gz"):
+			self.exe("cd /tmp/"+directory+" ; wget -q -O "+diff+" "+archiveUrl+self._source["Directory"]+"/"+self._source["patch"][1])
+			p = os.popen("cd /tmp/"+directory+" ; lsdiff -z "+diff+" | grep debian/watch")
+			watch = p.readline().strip('\r\n')
+			p.close()
+			if watch == "":
+				#print "No debian/watch file found. Skipping."
+				#print
+				nowatch.append(self._source)
+				self.exe("cd /tmp/ ; rm -rf "+directory)
+				return
 
-		self.exe("cd /tmp/"+directory+" ; mkdir "+directory)
-		self.exe("cd /tmp/"+directory+"/"+directory+" ; filterdiff -z -i\"*/debian/*\" "+diff+" | patch -f -s -p1 2>&1 > /dev/null")
+			self.exe("cd /tmp/"+directory+" ; mkdir "+directory)
+			self.exe("cd /tmp/"+directory+"/"+directory+" ; filterdiff -z -i\"*/debian/*\" "+diff+" | patch -f -s -p1 2>&1 > /dev/null")
+		else:
+			self.exe("cd /tmp/"+directory+" ; mkdir "+directory)
+			self.exe("cd /tmp/"+directory+"/"+directory+" ; wget -q -O "+debianTarGz+" "+archiveUrl+self._source["Directory"]+"/"+self._source["patch"][1] + " ; tar xzf " + debianTarGz)
+			p = os.popen("cd /tmp/"+directory+"/"+directory+" ; ls debian/watch 2>/dev/null")
+			watch = p.readline().strip('\r\n')
+			p.close()
+			if watch == "":
+				#print "No debian/watch file found. Skipping."
+				#print
+				nowatch.append(self._source)
+				self.exe("cd /tmp/ ; rm -rf "+directory)
+				return
 		p = os.popen("cd /tmp/"+directory+"/"+directory+" ; uscan --report-status --dehs > "+xmlfile)
 		p.close()
 
@@ -143,7 +157,8 @@ if __name__ == "__main__":
 			md5sum = parts[1]
 			filename = parts[3]
 			if filename.endswith("tar.gz"): source["tar.gz"] = (md5sum, filename)
-			if filename.endswith("diff.gz"): source["diff.gz"] = (md5sum, filename)
+			if filename.endswith("diff.gz"): source["patch"] = (md5sum, filename)
+			if filename.endswith("debian.tar.gz"): source["patch"] = (md5sum, filename)
 			if filename.endswith("dsc"): source["dsc"] = (md5sum, filename)
 		if infiles and line.find(":") != -1: infiles = False
 
@@ -169,68 +184,8 @@ if __name__ == "__main__":
 		#print "Version: %s" % source["Version"]
 		#print "Directory: %s" % source["Directory"]
 		#print "tar.gz: %s %s" % (source["tar.gz"][0], source["tar.gz"][1])
-		#print "diff.gz: %s %s" % (source["diff.gz"][0], source["diff.gz"][1])
+		#print "patch: %s %s" % (source["patch"][0], source["patch"][1])
 		#print "dsc: %s %s" % (source["dsc"][0], source["dsc"][1])
-#		source["Warning"] = []
-
-#		directory = "blablub"
-#		diff = "bla.diff.gz"
-#		xmlfile = "dehs.xml"
-#
-#		os.chdir("/tmp")
-#		os.system("rm -rf "+directory)
-#
-#		os.system("mkdir "+directory)
-#		os.chdir(directory)
-#		os.system("wget -q -O "+diff+" "+archiveUrl+source["Directory"]+"/"+source["diff.gz"][1])
-#		p = os.popen("lsdiff -z "+diff+" | grep debian/watch")
-#		watch = p.readline().strip('\r\n')
-#		p.close()
-#		if watch == "":
-#			#print "No debian/watch file found. Skipping."
-#			#print
-#			nowatch.append(source)
-#			os.chdir("/tmp")
-#			os.system("rm -rf "+directory)
-#			continue
-#
-#		os.system("mkdir "+directory)
-#		os.chdir(directory)
-#		os.system("filterdiff -z -i\"*/debian/*\" ../"+diff+" | patch -f -s -p1 2>&1 > /dev/null")
-#		p = os.popen("uscan --report-status --dehs > ../"+xmlfile)
-#		p.close()
-#
-#		xmldoc = minidom.parse("../"+xmlfile)
-#
-#		if len(xmldoc.firstChild.childNodes) == 1:
-#			source["Warning"].append("Unknown warning. Uscan reports nothing.")
-#		else:
-#			for entry in xmldoc.firstChild.childNodes:
-#				if entry.nodeName == "status":
-#					status = entry.firstChild.data
-#					source["Status"] = status
-#					if status == "Newer version available":
-#						needsupdate.append(source)
-#					elif status == "up to date":
-#						uptodate.append(source)
-#					else:
-#						source["Warning"].append("Unknown status: %s" % status)
-#				if entry.nodeName == "debian-uversion":
-#					source["DebianUVersion"] = entry.firstChild.data
-#				if entry.nodeName == "debian-mangled-uversion":
-#					source["DebianMangledUVersion"] = entry.firstChild.data
-#				if entry.nodeName == "upstream-version":
-#					source["UpstreamVersion"] = entry.firstChild.data
-#				if entry.nodeName == "upstream-url":
-#					source["UpstreamURL"] = entry.firstChild.data
-#				if entry.nodeName == "warnings":
-#					source["Warning"].append(entry.firstChild.data)
-#
-#		if len(source["Warning"]) > 0:
-#			warning.append(source)
-#
-#		os.chdir("/tmp")
-#		os.system("rm -rf "+directory)
 
 	threadsFinished = False
 	while not threadsFinished:
@@ -244,26 +199,6 @@ if __name__ == "__main__":
 	warning.sort(key=operator.itemgetter('Package'))
 	needsupdate.sort(key=operator.itemgetter('Package'))
 	uptodate.sort(key=operator.itemgetter('Package'))
-
-#	for source in data:
-#		count = []
-#		for a in nowatch:
-#			if a["Package"]==source["Package"]:
-#				count.append("nowatch")
-#		for a in warning:
-#			if a["Package"]==source["Package"]:
-#				count.append("warning")
-#		for a in needsupdate:
-#			if a["Package"]==source["Package"]:
-#				count.append("needsupdate")
-#		for a in uptodate:
-#			if a["Package"]==source["Package"]:
-#				count.append("uptodate")
-#		if len(count) != 1:
-#			print source["Package"],count
-#		assert len(count) == 1
-#
-#	assert len(data)==len(nowatch)+len(warning)+len(needsupdate)+len(uptodate)
 
 	htmlfile = "/tmp/report"+str(random.randint(0,1000))+".html"
 	if os.path.isfile(htmlfile): os.remove(htmlfile)
@@ -280,7 +215,7 @@ if __name__ == "__main__":
 	html.write("<tr><td>Package</td><td>Debian version</td><td>Upstream version</td></tr>\n")
 	for source in needsupdate:
 		html.write("<tr>")
-		html.write("    <td>"+source["Package"]+" <a href=\""+archiveUrl+source["Directory"]+"/"+source["diff.gz"][1]+"\">diff.gz</a> <a href=\""+archiveUrl+source["Directory"]+"/"+source["dsc"][1]+"\">dsc</a></td>")
+		html.write("    <td>"+source["Package"]+" <a href=\""+archiveUrl+source["Directory"]+"/"+source["patch"][1]+"\">patch</a> <a href=\""+archiveUrl+source["Directory"]+"/"+source["dsc"][1]+"\">dsc</a></td>")
 		html.write("    <td>"+source["DebianUVersion"]+" ("+source["DebianMangledUVersion"]+")</td>")
 		html.write("    <td><a href=\""+source["UpstreamURL"]+"\">"+source["UpstreamVersion"]+"</a></td>")
 		html.write("</tr>\n")
@@ -311,7 +246,7 @@ if __name__ == "__main__":
 	html.write("<tr><td>Package</td><td>Debian version</td><td>Upstream version</td></tr>\n")
 	for source in uptodate:
 		html.write("<tr>")
-		html.write("    <td>"+source["Package"]+" <a href=\""+archiveUrl+source["Directory"]+"/"+source["diff.gz"][1]+"\">diff.gz</a> <a href=\""+archiveUrl+source["Directory"]+"/"+source["dsc"][1]+"\">dsc</a></td>")
+		html.write("    <td>"+source["Package"]+" <a href=\""+archiveUrl+source["Directory"]+"/"+source["patch"][1]+"\">patch</a> <a href=\""+archiveUrl+source["Directory"]+"/"+source["dsc"][1]+"\">dsc</a></td>")
 		html.write("    <td>"+source["DebianUVersion"]+" ("+source["DebianMangledUVersion"]+")</td>")
 		html.write("    <td><a href=\""+source["UpstreamURL"]+"\">"+source["UpstreamVersion"]+"</a></td>")
 		html.write("</tr>\n")
