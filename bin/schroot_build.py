@@ -157,10 +157,10 @@ def debootstrap(release, arch, chrootdir):
 		" "+chrootdir+" http://"+apt_mirror+"/"+options.provider+"/");
 
 def chroot_config_files_update(chrootdir, release, arch):
-	"""
-	Updates config files fromt he chrootdir environment
-	"""
-	default_sources="""
+    """
+    Updates config files fromt he chrootdir environment
+    """
+    default_sources="""
 deb http://mirror/ubuntu/ release main restricted
 deb-src http://mirror/ubuntu/ release main restricted
 deb http://mirror/ubuntu/ release-updates main restricted
@@ -183,17 +183,17 @@ deb-src http://mirror/ubuntu release-security universe
 deb http://mirror/ubuntu release-security multiverse
 deb-src http://mirror/ubuntu release-security multiverse
 	"""
-	apt_mirror = "localhost:3142" 
-	default_sources = default_sources.replace("mirror", apt_mirror)
-	default_sources = default_sources.replace("release", release)
-	FILE = open(chrootdir+"/etc/apt/sources.list","w")
-	FILE.writelines(default_sources)
-	FILE.close()
-	copy_to_chroot("etc/resolv.conf", chrootdir);
-	copy_to_chroot("etc/hosts", chrootdir);
-	copy_to_chroot("etc/sudoers", chrootdir);
-
-	os.system("echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
+    apt_mirror = "localhost:3142" 
+    default_sources = default_sources.replace("mirror", apt_mirror)
+    default_sources = default_sources.replace("release", release)
+    if options.provider == 'ubuntu':
+    	FILE = open(chrootdir+"/etc/apt/sources.list","w")
+    	FILE.writelines(default_sources)
+    	FILE.close()
+    copy_to_chroot("etc/resolv.conf", chrootdir);
+    copy_to_chroot("etc/hosts", chrootdir);
+    copy_to_chroot("etc/sudoers", chrootdir);
+    os.system("echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
 
 def chroot_postinstall_update(chrootdir, release, arch):
 	global options
