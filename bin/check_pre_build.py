@@ -31,6 +31,7 @@ import sys
 import time
 import datetime
 import glob
+import commands
 from optparse import OptionParser
 from configobj import ConfigObj
 from localaux import *
@@ -161,8 +162,6 @@ def check_source_changes(release, component, filename):
     i386_rc = sbuild_package(release, component, control_file, 'i386')
     if i386_rc == 0:
         sbuild_package(release, component, control_file, 'amd64') 
-    else:
-        shutil.move(changes_file ,  "%s.failed" %  changes_file)
     
 def sbuild_package(release, component, control_file, arch):
     """Attempt to build package using sbuild """        
@@ -172,6 +171,7 @@ def sbuild_package(release, component, control_file, arch):
     name_version = "%s_%s" % (control_file['Source']
         , control_file.version())
     dsc_file = "%s.dsc" % name_version
+    dsc_controlfile = DebianControlFile(dsc_file)
     destination_dir = "%s/%s/%s" % (post_build_dir,  release,  component)        
     if not os.path.exists(destination_dir):
         os.makedirs(destination_dir, 0755)                        
@@ -185,11 +185,24 @@ def sbuild_package(release, component, control_file, arch):
     else:
         arch_str = arch
         arch_list = ['amd64']
+        if dsc_controlfile['Architecture'] == 'all':
+            print "Skipping Architecture= 'all' "
+            return 0
     rc = os.system('sbuild -d %s -c %s.%s %s' % 
         (release, release, arch_str, dsc_file))
-    log_filename = "%s/%s" % (logs_dir, log_name)
-    shutil.copyfile('current', log_filename)    
+    log_link = "%s_%s.build" % (name_version, arch)
+    if not os.path.exists(log_link):
+        log_link = "current"
+    if not os.path.exists(log_link):
+        print "Unable to find build log symbolic link"
+        return -1 
+    try:
+        log_filename = os.readlink(log_link)
+    except OSError:
+        print "Unable to find build log symbolic link"
+        return -1
     elapsed_time = `int(time.time() - start_time)`
+    (rc, build_tail) = commands.getstatusoutput('tail -2 ' + log_filename)
     report_msg = "List of files:\n"	
     report_msg += "--------------\n"
     if rc==0:
@@ -224,8 +237,8 @@ def sbuild_package(release, component, control_file, arch):
         status = "FAILED"
     report_title = "Build for %s/%s/%s (%s) %s\n" \
         % (release, component, name_version, arch, status)
-    report_msg += "\nElapsed Time: %s second(s)\n" % elapsed_time        
-    report_msg += "Log file: %s%s\n" %  (base_url,  log_filename)
+    report_msg += '\n' + build_tail        
+    report_msg += "Log file: %s%s\n" % (base_url, os.path.basename(log_filename))
     Log.print_(report_title)
     send_mail_message(target_mails, report_title, report_msg)	
     return rc
