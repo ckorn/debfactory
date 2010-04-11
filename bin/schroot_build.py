@@ -219,6 +219,7 @@ def chroot_postinstall_update(chrootdir, release, arch):
 	os.system("tar -C "+chrootdir+" -czf "+chrootdir+".tar.gz .")
 	os.system("du -sh "+chrootdir+".tar.gz")
 	shutil.rmtree(chrootdir)
+	# TODO: Create a config file at /etc/schroot/chroot.d/ instead
 	is_configured = int(commands.getoutput("grep -v '#' /etc/schroot/schroot.conf | grep -c "+release+"."+arch))
 	if is_configured==0:
 		schroot_conf = "\n"
