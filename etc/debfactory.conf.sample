@@ -12,6 +12,9 @@ pre_build_dir = /build/pre_build
 # POST build directory
 post_build_dir = /build/post_build
 
+# changelog directory
+changelog_dir = /archive/changelogs
+
 # repository managment commands 
 rep_commands_dir = /build/rep_commands
 

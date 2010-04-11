@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-#  (C) Copyright 2009, GetDeb Team - https://launchpad.net/~getdeb
+#  (C) Copyright 2009-2010, GetDeb Team - https://launchpad.net/~getdeb
 #  --------------------------------------------------------------------
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ import os
 import sys
 import time
 import glob
+import commands
 from optparse import OptionParser
 from configobj import ConfigObj
 from localaux import *
@@ -40,32 +41,69 @@ config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
 config = ConfigObj(config_file)
 
 # Load configuration
-try:
-	archive_admin_email = config['archive_admin_email']	
-	post_build_dir = config['post_build_dir']
-except Exception:
-	print "Configuration error"
-	print `sys.exc_info()[1]`
-	sys.exit(3)
-
+required_config = ['archive_admin_email', 'post_build_dir', 'changelog_dir']
+for item in required_config:
+    if not item in config:
+        print "Config item",item,"is not defined"
+        sys.exit(3)
+    
 Log = Logger()	
 
+def extract_changelog(control_file, changes_file, component):
+    """ Extract the changelog if control_file contains a .dsc file """
+    global config
+    extract_dir = '/tmp/changelog_extract'
+    name = control_file['Source']
+    name_version = control_file['Source']+"_"+control_file.version()
+    if name.startswith('lib'):
+        prefix = name[:4]
+    else:
+        prefix = name[0]
+         
+    changelog_dir = os.path.join(config['changelog_dir'], 'pool', \
+                                 component, prefix, name, name_version)    
+    if os.path.isdir(extract_dir):
+        shutil.rmtree(extract_dir)
+    dir_name = os.path.dirname(changes_file)
+    for file in control_file.files_list():
+        if file.name.endswith('.dsc'):
+            (rc, output) = commands.getstatusoutput('dpkg-source -x %s %s' % \
+                      (os.path.join(dir_name, file.name), extract_dir))
+            if rc <> 0 or not os.path.isdir(extract_dir):
+                Log.print_("Unable to extract source to retrieve changelog")
+            else:
+                file_list = []
+                changelog_files = os.path.join(extract_dir, 'debian', '*changelog')
+                file_list = glob.glob(changelog_files)
+                if not file_list:
+                    Log.print_("Unable to find changelog on source")
+                copyright_files = os.path.join(extract_dir, 'debian', '*copyright')                    
+                file_list.extend(glob.glob(copyright_files))                
+                print changelog_dir
+                if not os.path.exists(changelog_dir):
+                    os.makedirs(changelog_dir, 0755)
+                for fn in file_list:
+                    shutil.copy(fn, changelog_dir)
+    if os.path.isdir(extract_dir):
+        shutil.rmtree(extract_dir)
+                
 def check_changes(release, component, filename):
     """	
     Check a _.changes file and include it into the repository
     """
-    target_emails = archive_admin_email.split(",")
+    global config
+    target_emails = config['archive_admin_email'].split(",")
     Log.print_("Including %s/%s/%s" % (release, component, filename))	
         
     source_dir = "%s/%s/%s" \
-        % (post_build_dir, release, component)
+        % (config['post_build_dir'], release, component)
     changes_file = "%s/%s" % (source_dir, filename)
                     
     # Remove previous failed status
     if os.path.exists('%s.failed' % changes_file):
-        os.unlink('%s.failed' % changes_file)
+        os.unlink('%s.failed' % changes_file)        
     control_file = DebianControlFile(changes_file)
-
+    
     #gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
     #    +'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
     #
@@ -104,7 +142,9 @@ def check_changes(release, component, filename):
     (rc, output) = commands.getstatusoutput(command)
     print output
     report_msg += output
-    if rc==0:
+    if rc == 0:
+        if filename.endswith('_source.changes'):
+            extract_changelog(control_file)
         status = "SUCCESSFUL"
         control_file.remove()
     else:
@@ -119,49 +159,51 @@ def check_changes(release, component, filename):
     send_mail_message(target_emails, report_title, output)    
 
 def check_post_build_dir():
-	"""
-	Check the ftp incoming directory for release directories
-	"""	
-	file_list = glob.glob("%s/*" \
-		% (post_build_dir))
-	for file in file_list:
-		if os.path.isdir(file):
-			release = os.path.basename(file)
-			check_release_dir(release)
+    """
+    Check the ftp incoming directory for release directories
+    """	
+    global config
+    file_list = glob.glob("%s/*" \
+    	% (config['post_build_dir']))
+    for file in file_list:
+    	if os.path.isdir(file):
+    		release = os.path.basename(file)
+    		check_release_dir(release)
 	
 def check_release_dir(release):
-	"""
-	Check a release directory for components
-	"""
-	file_list = glob.glob("%s/%s/*" \
-		% (post_build_dir, release))	
-	for file in file_list:
-		if os.path.isdir(file):
-			component = os.path.basename(file)
-			check_release_component_dir(release, component)
+    """
+    Check a release directory for components
+    """
+    global config
+    file_list = glob.glob("%s/%s/*" \
+    	% (config['post_build_dir'], release))	
+    for file in file_list:
+    	if os.path.isdir(file):
+    		component = os.path.basename(file)
+    		check_release_component_dir(release, component)
 	
 def check_release_component_dir(release, component):
-	""" 
-	Check a release/component directory
-	"""
-	Log.log("Checking %s/%s" % (release, component))
-	file_list = glob.glob("%s/%s/%s/*.changes" \
-		% (post_build_dir, release, component))
-		
+    """ 
+    Check a release/component directory
+    """
+    global config
+    Log.log("Checking %s/%s" % (release, component))
+    file_list = glob.glob("%s/%s/%s/*.changes" \
+    	% (config['post_build_dir'], release, component))
+    	
     # First we process _source.changes to make sure existing packages
     # will be deleted from the repository before the binaries include
-	for fname in file_list:
-		if fname.endswith("_source.changes"):
-			check_changes(release, component, os.path.basename(fname))
+    for fname in file_list:
+    	if fname.endswith("_source.changes"):
+    		check_changes(release, component, os.path.basename(fname))
             
-	for fname in file_list:
-		if not fname.endswith("_source.changes"):
-			check_changes(release, component, os.path.basename(fname))
+    for fname in file_list:
+    	if not fname.endswith("_source.changes"):
+    		check_changes(release, component, os.path.basename(fname))
                         
-	Log.log("Done")
+    Log.log("Done")
 	
-def main():
-	
+def main():	
 	parser = OptionParser()
 	parser.add_option("-q", "--quiet",
 		action="store_false", dest="verbose", default=True,
