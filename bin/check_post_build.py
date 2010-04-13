@@ -93,15 +93,18 @@ def check_changes(release, component, filename):
     """
     global config
     target_emails = config['archive_admin_email'].split(",")
-    Log.print_("Including %s/%s/%s" % (release, component, filename))	
-        
     source_dir = "%s/%s/%s" \
-        % (config['post_build_dir'], release, component)
+        % (config['post_build_dir'], release, component)    
     changes_file = "%s/%s" % (source_dir, filename)
-                    
+    if not os.path.exists(changes_file):
+        Log.log('Skipping '+changes_file+' , file not found')
+        return 1
+    Log.print_("Including %s/%s/%s" % (release, component, filename))
+                            
     # Remove previous failed status
     if os.path.exists('%s.failed' % changes_file):
-        os.unlink('%s.failed' % changes_file)        
+        os.unlink('%s.failed' % changes_file)
+                
     control_file = DebianControlFile(changes_file)
     
     #gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
@@ -110,20 +113,20 @@ def check_changes(release, component, filename):
     #if not gpg_sign_author:
     #    Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
     #    return
-
+    
     name = control_file['Source'] 
     version = control_file.version()
     name_version = "%s_%s" % (control_file['Source'] \
         , control_file.version())
-
+    
     report_title = "Include on testing for %s/%s/%s FAILED\n" \
         % (release, component, name_version)
     report_msg = "File: %s/%s/%s\n" % (release, component, filename)
     report_msg  += '-----------------\n'
-
+    
     #target_mails.append(control_file['Changed-By'])    
     report_msg  += "Signed By: %s\n\n" % control_file['Changed-By']
-
+    
     # Get list of files described on the changes	
     report_msg += "List of files:\n"	
     report_msg += "--------------\n"
@@ -149,14 +152,13 @@ def check_changes(release, component, filename):
         control_file.remove()
     else:
         status = "FAILED"
-        shutil.move(changes_file, "%s.failed" % changes_file)
-        
-        
+        shutil.move(changes_file, "%s.failed" % changes_file)        
+                
     report_title = "Included on testing %s/%s/%s %s\n" \
         % (release, component, name_version, status)    
-    Log.print_(status)
     Log.print_(report_title)  
-    send_mail_message(target_emails, report_title, output)    
+    send_mail_message(target_emails, report_title, output)
+    return rc    
 
 def check_post_build_dir():
     """
@@ -188,19 +190,18 @@ def check_release_component_dir(release, component):
     """
     global config
     Log.log("Checking %s/%s" % (release, component))
-    file_list = glob.glob("%s/%s/%s/*.changes" \
+    file_list = glob.glob("%s/%s/%s/*_source.changes" \
     	% (config['post_build_dir'], release, component))
     	
-    # First we process _source.changes to make sure existing packages
-    # will be deleted from the repository before the binaries include
-    for fname in file_list:
-    	if fname.endswith("_source.changes"):
-    		check_changes(release, component, os.path.basename(fname))
-            
-    for fname in file_list:
-    	if not fname.endswith("_source.changes"):
-    		check_changes(release, component, os.path.basename(fname))
-                        
+    # First we process _source.changes 
+    # If the import is successful we then import the corresponding binary packages   
+    for fname in file_list: 
+    	if check_changes(release, component, os.path.basename(fname)) == 0:            
+            i386_changes = fname.replace('_source','_i386')        
+            check_changes(release, component, os.path.basename(i386_changes))
+            amd64_changes = fname.replace('_source','_amd64')
+            check_changes(release, component, os.path.basename(i386_changes))
+                                           
     Log.log("Done")
 	
 def main():	

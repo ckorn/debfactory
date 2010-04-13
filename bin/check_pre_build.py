@@ -146,22 +146,24 @@ def check_source_changes(release, component, filename):
         Log.print_(report_msg)
         send_mail_message(target_mails, report_title, report_msg)
         control_file.remove()
-        return
-      
+        return      
     
     full_post_build_dir = "%s/%s/%s" % (post_build_dir,  release \
         , component)
     if not os.path.exists(full_post_build_dir):
         os.makedirs(full_post_build_dir, 0755)
 
-    # Before building we move the source to the post_build queue anyway
-    control_file.move(full_post_build_dir)        
+
+            
 
     version = control_file.version()     
     os.chdir(destination_dir)
     i386_rc = sbuild_package(release, component, control_file, 'i386')
     if i386_rc == 0:
-        sbuild_package(release, component, control_file, 'amd64') 
+        sbuild_package(release, component, control_file, 'amd64')
+    
+        # Only move the source to post_build after building something 
+        control_file.move(full_post_build_dir)         
     
 def sbuild_package(release, component, control_file, arch):
     """Attempt to build package using sbuild """        
@@ -205,7 +207,7 @@ def sbuild_package(release, component, control_file, arch):
     (rc, build_tail) = commands.getstatusoutput('tail -2 ' + log_filename)
     report_msg = "List of files:\n"	
     report_msg += "--------------\n"
-    if rc==0:
+    if rc == 0:
         status = "SUCCESSFUL"
         for arch_str in arch_list:
             # We really need the "./" because we have no base dir
