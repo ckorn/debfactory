@@ -46,10 +46,19 @@ import types
 from datetime import datetime
 from optparse import OptionParser
 from urllib2 import Request, urlopen, URLError, HTTPError
-from localaux import *
+
 from packages_model import *
-from dpkg_control import *
-from lockfile import *
+
+from os.path import join, dirname, exists, realpath, abspath
+LAUNCH_DIR = abspath(sys.path[0])
+LIB_DIR = join(LAUNCH_DIR, '..', 'lib')
+sys.path.insert(0, LIB_DIR)
+
+
+from log import Logger
+from mail import send_mail_message
+from dpkg_control import DebianControlFile
+from lockfile import LockFile
     
     
 # Some global variables

@@ -37,9 +37,18 @@ import time
 import glob
 from optparse import OptionParser
 from configobj import ConfigObj
-from localaux import *
+
+from os.path import join, dirname, exists, realpath, abspath
+LAUNCH_DIR = abspath(sys.path[0])
+LIB_DIR = join(LAUNCH_DIR, '..', 'lib')
+sys.path.insert(0, LIB_DIR)
+
+from log import Logger
+from mail import send_mail_message
 from dpkg_control import DebianControlFile
-from lockfile import *
+from lockfile import LockFile
+
+
 
 config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
 config = ConfigObj(config_file)

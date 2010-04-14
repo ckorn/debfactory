@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-#  (C) Copyright 2009, GetDeb Team - https://launchpad.net/~getdeb
+#  (C) Copyright 2009-2010, GetDeb Team - https://launchpad.net/~getdeb
 #  --------------------------------------------------------------------
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -34,9 +34,16 @@ import glob
 import commands
 from optparse import OptionParser
 from configobj import ConfigObj
-from localaux import *
-from dpkg_control import *
-from lockfile import *
+
+from os.path import join, dirname, exists, realpath, abspath
+LAUNCH_DIR = abspath(sys.path[0])
+LIB_DIR = join(LAUNCH_DIR, '..', 'lib')
+sys.path.insert(0, LIB_DIR)
+
+from log import Logger
+from mail import send_mail_message
+from dpkg_control import DebianControlFile
+from lockfile import LockFile
 
 config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
 config = ConfigObj(config_file)

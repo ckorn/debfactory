@@ -52,35 +52,7 @@ import time
 def uniq(alist):
     set = {}
     return [set.setdefault(e,e) for e in alist if e not in set]
-
-""" Small helper class for logging """
-class Logger:
-    def __init__(self, verbose=True):
-        self.verbose = verbose
-        
-    def log(self, message, verbose=None):
-        """
-        If verbose is True print the message
-        """
-        verbose = verbose or self.verbose
-        if self.verbose:
-            print "%s: %s" % (time.strftime('%c'), message)
-            
-    def print_(self, message):
-        """
-        always print a message
-        """
-        print "%s: %s" % (time.strftime('%c'), message)
 		
-def check_md5sum(filename, expected_md5sum):
-	"""
-	"""
-	md5sum=commands.getoutput('md5sum '+filename)
-	(newmd5, dummy) = md5sum.split()
-	#newmd5 = newmd5.strip('\r\n')
-	if newmd5 != expected_md5sum:     	
-		return newmd5
-	return None
 
 def send_mail_message(destination, subject, body):
     """

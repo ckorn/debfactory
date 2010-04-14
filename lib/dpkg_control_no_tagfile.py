@@ -20,13 +20,11 @@
 #  This file provides several functions to handle debian packages
 #  control files.
 
-import sys
 import os
 import commands	 # We need it for the GPG signature verification
 import shutil
-from apt_pkg import TagFile
 
-class DebianControlFile(object):
+class DebianControlFile:
 	"""
 	This class holds all the information from a debian control file.
 	It also provides some methods to operate with that information.
@@ -59,29 +57,57 @@ class DebianControlFile(object):
 			return repr(self.value1, self.value2, self.value3)
 
 
-	def __init__(self, filename=None):
+	def __init__(self, filename=None, contents=None):
 		self._filename = filename		
-		if filename:
-		          self.load(filename)
+		self.load_contents(filename, contents)
 			
-	def load(self, filename):
+	def load_contents(self, filename=None, contents=None):
 		"""
-		Load control file
+		Opens the control file and load it's contents into the data
+		attribute.
 		"""
-		section = None
-		control_file = open(filename)
-		self.tagf = TagFile(control_file)
-		# Loop to skip PGP signature
-		for section in self.tagf:
-		    if section.keys()[0][0] != '-': 
-		        break
-		self.section = section
-		control_file.close()
- 		
+		self._data = []
+		self._deb_info = {}
+		last_data = []
+		if filename is not None:
+			self._filename = filename
+			control_file = open(self._filename, 'r')
+			self._data = control_file.readlines()
+			control_file.close()
+		if contents is not None:
+			self._data = contents.split("\n")
+		last_data = []
+		deb_info = {}
+		field = None
+		for line in self._data:
+			try:
+				line = unicode(line, 'utf-8')
+			except UnicodeDecodeError:
+				print "WARNING: Package info contains non utf-8 data, replacing"
+				line = unicode(line, 'utf-8', errors='replace')
+			line = line.strip("\r\n")
+			if not line:
+				continue
+			if line == '-----BEGIN PGP SIGNATURE-----':
+				break
+			if line[0] == " ":
+				last_data.append(line)
+			else:
+				if field and len(last_data) > 1:					
+					deb_info[field] = last_data
+				last_data = []
+				(field, sep, value) = line.partition(": ") 
+				if sep == ": ":
+					last_data = [value]
+					deb_info[field] = value
+		if field and len(last_data) > 1:					
+			deb_info[field] = last_data					
+		self._deb_info = deb_info
+		
 	def files_list(self):
 		if not self['Files']:
 			return None
-		files = self['Files'].split('\n')
+		files = self['Files'][1:]
 		file_info_list = []
 		for file in files:
 			file_parts = file.strip(" ").split(" ")
@@ -94,21 +120,18 @@ class DebianControlFile(object):
 		""" 
 		Returns the package version after removing the epoch part
 		"""
-		version = self.section['Version']
+		version = self['Version']
 		epoch, sep, version = version.partition(":")
 		return version or epoch
 		   
 	def upstream_version(self):
 		""" 
 		Returns the upstream version contained on the Version field
-		"""          
+		"""                
 		version_list = self.version().split("-")
-		
-		if len(version_list) == 1: # No dash, upstream = version
-			return version_list[0]		
-		version_list.pop() # remove last component (debian version)    
-
-		return '-'.join(version_list)
+		version_list.pop()        
+		version = '-'.join(version_list)
+		return version
 
 	def verify_gpg(self, keyring, verbose=False):
 		"""Verifies the file GPG signature using the specified keyring
@@ -234,20 +257,64 @@ class DebianControlFile(object):
 
 	def __getitem__(self, item):
 		try:
-			item = self.section[item]
+			item = self._deb_info[item]
 		except KeyError:
 			item = None
 		return item
 		
 	def __str__(self):
-		return str(self.section)
+		return `self._deb_info`
 
 if __name__ == '__main__':
-	if len(sys.argv) < 2:
-		print "You must supply a filename for testing"
-		sys.exit(1)        
-	print "Parsing",sys.argv[1]
-	control_file = DebianControlFile(sys.argv[1])
+	import sys
+	sample_control_file = """	
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+Format: 1.8
+Date: Thu, 22 Oct 2009 14:33:27 -0300
+Source: wormux
+Binary: wormux wormux-data
+Architecture: source
+Version: 1:0.8.5-1~getdeb1
+Distribution: karmic
+Urgency: low
+Maintainer: Debian Games Team <pkg-games-devel@lists.alioth.debian.org>
+Changed-By: Emilio Zopes <turl@tuxfamily.org>
+Description: 
+ wormux     - funny fight game on 2D maps
+ wormux-data - data files for the wormux game
+Changes: 
+ wormux (1:0.8.5-1~getdeb1) karmic; urgency=low
+ .
+   * New Upstream Version
+Checksums-Sha1: 
+ f3735fe3dbfb8c148f7fb55845a1c5d5c2be6f49 1722 wormux_0.8.5-1~getdeb1.dsc
+ 97af263126cb79abeac69472abe6f1d11f708d57 80056084 wormux_0.8.5.orig.tar.gz
+ c07114ec6e5785b5453d4d8079fa815591928255 30114 wormux_0.8.5-1~getdeb1.diff.gz
+Checksums-Sha256: 
+ 4d2404a01ef50b7c485dc5267dde09a9e243437e06d06f032d0f09c505c6cf18 1722 wormux_0.8.5-1~getdeb1.dsc
+ 19873f82507fd6f76ddd43278028b8e7d45281fd7a9a31099a74cbfcfc9d10cb 80056084 wormux_0.8.5.orig.tar.gz
+ 18cca660579abc01ac7d3ccdf4770be6532ad08fd88408ad8cd1265ec218ba8b 30114 wormux_0.8.5-1~getdeb1.diff.gz
+Files: 
+ 84fbe8d79d9f9d555edb2f8b8dc5a5c3 1722 games optional wormux_0.8.5-1~getdeb1.dsc
+ eb9eedd1018bd74d2109244bc5a84d71 80056084 games optional wormux_0.8.5.orig.tar.gz
+ 2f5915e1eae3655a99df202a2bb7dd07 30114 games optional wormux_0.8.5-1~getdeb1.diff.gz
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEARECAAYFAkrgmbgACgkQ4X+nR70cqrRRgACgle7Whh7ATTH35n6KBQHGkyb0
+tHIAn3lmWOuobPG1bexavbq3h36Tm7yb
+=wNh8
+-----END PGP SIGNATURE-----
+"""
+	if len(sys.argv) > 1:
+		print "Parsing",sys.argv[1]
+		control_file = DebianControlFile(sys.argv[1])
+	else:
+		control_file = DebianControlFile(contents=sample_control_file)
+		#control_file.load_contents()
 	print control_file
 	print "------- Testing sample control file -----"
 	print "Source: %s" % control_file['Source']
