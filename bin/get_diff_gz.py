@@ -62,7 +62,7 @@ def search_on_getdeb2(orig_file, release):
 			package_lines.append(line)
 	if len(package_lines) == 0: return None
 	p_d = list()
-	package_re = re.compile('<a .*?>(?P<orig>.*?)\.diff\.gz<')
+	package_re = re.compile('<a .*?>(?P<orig>.*?)(?:\.diff\.gz|\.debian\.tar\.gz)<')
 	download_re = re.compile('<a href="(?P<download>.*?)">')
 	for line in package_lines:
 		search_result = re.search(package_re, line)
@@ -90,7 +90,7 @@ def search_on_playdeb(orig_file, release):
 			package_lines.append(line)
 	if len(package_lines) == 0: return None
 	p_d = list()
-	package_re = re.compile('<a .*?>(?P<orig>.*?)\.diff\.gz<')
+	package_re = re.compile('<a .*?>(?P<orig>.*?)(?:\.diff\.gz|\.debian\.tar\.gz)<')
 	download_re = re.compile('<a href="(?P<download>.*?)">')
 	for line in package_lines:
 		search_result = re.search(package_re, line)
@@ -118,8 +118,13 @@ def applyDiff(p,orig):
 				if os.path.isdir(t):
 					os.rename(t, dir_name)
 	if not os.path.exists(dir_name + '/debian'):
-		print 'cd ' + dir_name + ' ; zcat ../' + p + '*.diff.gz | patch -p1 ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"'
-		os.system('cd ' + dir_name + ' ; zcat ../' + p + '*.diff.gz | patch -p1 ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"')
+		tmp = glob.glob(p + '*.diff.gz')
+		if tmp:
+			print 'cd ' + dir_name + ' ; zcat ../' + p + '*.diff.gz | patch -p1 ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"'
+			os.system('cd ' + dir_name + ' ; zcat ../' + p + '*.diff.gz | patch -p1 ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"')
+		else:
+			print 'cd ' + dir_name + ' ; tar xzf ../' + p + '*.debian.tar.gz ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"'
+			os.system('cd ' + dir_name + ' ; tar xzf ../' + p + '*.debian.tar.gz ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"')
 
 if __name__ == "__main__":
 	orig_file = get_base_package_name()

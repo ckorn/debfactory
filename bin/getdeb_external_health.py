@@ -86,6 +86,8 @@ class testit(Thread):
 
 		xmldoc = minidom.parse(xmlfile)
 
+		testAdded = False
+
 		if len(xmldoc.firstChild.childNodes) == 1:
 			self._source["Warning"].append("Unknown warning. Uscan reports nothing.")
 		else:
@@ -95,8 +97,10 @@ class testit(Thread):
 					self._source["Status"] = status
 					if status == "Newer version available":
 						needsupdate.append(self._source)
+						testAdded = True
 					elif status == "up to date":
 						uptodate.append(self._source)
+						testAdded = True
 					else:
 						self._source["Warning"].append("Unknown status: %s" % status)
 				if entry.nodeName == "debian-uversion":
@@ -112,6 +116,11 @@ class testit(Thread):
 
 		if len(self._source["Warning"]) > 0:
 			warning.append(self._source)
+			testAdded = True
+
+		if not testAdded:
+			print self._source["Package"]
+			os.system("cat " + xmlfile)
 
 		self.exe("cd /tmp ; rm -rf "+directory)
 
