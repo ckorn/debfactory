@@ -118,27 +118,35 @@ def check_source_changes(release, component, filename):
     target_mails.append(gpg_sign_author)    
     report_msg  = u"Signed By: %s\n\n" % gpg_sign_author
 
+    orig_file_extensions = [ "gz", "bz2", "lzma", "xz" ]
+    found_orig_file = False
+
     # Check if orig_file is available
-    orig_file = "%s_%s.orig.tar.gz" % (control_file['Source'], \
-        control_file.upstream_version())
+    for orig_file_extension in orig_file_extensions:
+        orig_file = "%s_%s.orig.tar.%s" % (control_file['Source'], \
+            control_file.upstream_version(), orig_file_extension)
 
-    if not orig_file:		
-        Log.print_("FIXME: This should never happen")
-        # FIXME: This should never happen but we should send a message
-        # anyway
-        return	
+        if not orig_file:		
+            Log.print_("FIXME: This should never happen")
+            # FIXME: This should never happen but we should send a message
+            # anyway
+            return	
 
-    if not os.path.exists("%s/%s" % (source_dir, orig_file)):
-        pre_build_orig = "%s/%s" % (full_pre_build_dir, orig_file)
-        if not os.path.exists(pre_build_orig):
-            print "report_msg:\n", report_msg			
-            report_msg += u"ERROR: Missing %s for %s\n" \
-                % (orig_file, changes_file)
-            Log.print_(report_msg)
-            send_mail_message(target_mails, report_title, report_msg)
-            return
+        if os.path.exists("%s/%s" % (source_dir, orig_file)):
+            found_orig_file = True
         else:
-            Log.print_('No orig.tar.gz, using %s ' % pre_build_orig)		
+            pre_build_orig = "%s/%s" % (full_pre_build_dir, orig_file)
+            if os.path.exists(pre_build_orig):
+                found_orig_file = True
+                Log.print_('No orig.tar.%s, using %s ' % (orig_file_extension, pre_build_orig))
+
+    if not found_orig_file:
+        print "report_msg:\n", report_msg			
+        report_msg += u"ERROR: Missing orig.tar.[gz,bz2,lzma,xz] for %s\n" \
+            % (changes_file)
+        Log.print_(report_msg)
+        send_mail_message(target_mails, report_title, report_msg)
+        return
         
     # Get list of files described on the changes	
     report_msg += u"List of files:\n"	
