@@ -113,10 +113,11 @@ if __name__ == "__main__":
 
 			for task in bug.bug_tasks:
 				if task.bug_target_display_name == project_name:
+					task.importance="Medium"
+					task.status="In Progress"
+					task.assignee=me
+					task.lp_save()
 					wrote_task = True
-					task.transitionToImportance(importance="Medium")
-					task.transitionToStatus(status="In Progress")
-					task.transitionToAssignee(assignee=me)
 
 			if wrote_task:
 				if previous_changelog['version'] == '':
@@ -126,6 +127,7 @@ if __name__ == "__main__":
 					bug.newMessage(content="Taking " + previous_changelog['package'] \
 					 + " " + previous_changelog['version'] + " as starting point.", \
 					 subject=subject_text)
+				bug.lp_save()
 				print 'Bug "' + bug_title + '" has been changed.'
 			else:
 				print 'No task for "' + project_name + '" has been found in bug "' + bug_title + '".'
@@ -143,12 +145,14 @@ if __name__ == "__main__":
 
 			for task in bug.bug_tasks:
 				if task.bug_target_display_name == project_name:
+					task.status="Fix Committed"
+					task.lp_save()
 					wrote_task = True
-					task.transitionToStatus(status="Fix Committed")
 
 			if wrote_task:
 				bug.newMessage(content="Package has been built for " + current_changelog['release'] + ".", \
 				  subject=subject_text)
+				bug.lp_save()
 				print 'Bug "' + bug_title + '" has been changed.'
 			else:
 				print 'No task for "' + project_name + '" has been found in bug "' + bug_title + '".'
@@ -191,14 +195,16 @@ if __name__ == "__main__":
 
 			for task in bug.bug_tasks:
 				if task.bug_target_display_name == project_name:
+					task.status="Fix Released"
+					task.lp_save()
 					wrote_task = True
-					task.transitionToStatus(status="Fix Released")
 
 			if wrote_task:
 				bug.newMessage(content="Published.\n\nThanks.\n\n\n" + \
 				 "---------------\n" + \
 				 current_changelog['changelog_entry'].strip('\r\n'), \
 				 subject=subject_text)
+				bug.lp_save()
 				print 'Bug "' + bug_title + '" has been changed.'
 			else:
 				print 'No task for "' + project_name + '" has been found in bug "' + bug_title + '".'
@@ -215,8 +221,9 @@ if __name__ == "__main__":
 
 			for task in bug.bug_tasks:
 				if task.bug_target_display_name == project_name:
+					task.status="Invalid"
+					task.lp_save()
 					wrote_task = True
-					task.transitionToStatus(status="Invalid")
 
 			if wrote_task:
 				print 'Please type the comment, end with "end"'
@@ -230,6 +237,7 @@ if __name__ == "__main__":
 				for line in full_desc:
 					comment += line + "\n"
 				bug.newMessage(content=comment, subject=subject_text)
+				bug.lp_save()
 				print 'Bug "' + bug_title + '" has been changed.'
 			else:
 				print 'No task for "' + project_name + '" has been found in bug "' + bug_title + '".'
