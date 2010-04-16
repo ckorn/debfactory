@@ -217,7 +217,7 @@ def sbuild_package(release, component, control_file, arch):
         print "Unable to find build log symbolic link"
         return -1
     elapsed_time = `int(time.time() - start_time)`
-    (rc, build_tail) = commands.getstatusoutput('tail -2 ' + log_filename)
+    (dummy, build_tail) = commands.getstatusoutput('tail -2 ' + log_filename)
     report_msg = "List of files:\n"	
     report_msg += "--------------\n"
     if rc == 0:

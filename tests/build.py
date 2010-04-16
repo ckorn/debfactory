@@ -23,8 +23,8 @@
 
 """
 
-dsc_url = "http://archive.getdeb.net/getdeb/ubuntu/pool/games/2/2h4u/2h4u_1.3-1~getdeb1.dsc"
-component = 'games'
+dsc_url = "http://archive.getdeb.net//getdeb/ubuntu/pool/apps/r/rosegarden/rosegarden_10.02.1-1~getdeb1.dsc"
+component = 'apps'
 
 import os
 import sys
@@ -42,7 +42,10 @@ def run_or_exit(cmd):
     rc = os.system(cmd)
     if rc != 0:
         sys.exit(rc)
-        
+
+if len(sys.argv) > 1:
+    dsc_url = sys.argv[1]
+    
 release = commands.getoutput('lsb_release -cs')
 run_dir = os.getcwd()
 os.chdir('/tmp')
@@ -57,7 +60,7 @@ package_name = debian_control['Source']
 os.chdir(join('/tmp/', '%s-%s' % (package_name, upstream_version)))
 run_or_exit('dch -D %s Testing package' % release)
 run_or_exit('debuild -S -sa -uc')
-changes_control = DebianControlFile('/tmp/%s_%s_source.changes' % (package_name, debian_control['Version']))
+changes_control = DebianControlFile('/tmp/%s_%s_source.changes' % (package_name, debian_control.version()))
 changes_control.move('/home/ftp/incoming/%s/%s' % (release, component), '/tmp')
 os.chdir(run_dir)
 
