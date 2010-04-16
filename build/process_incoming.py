@@ -73,7 +73,7 @@ def check_source_changes(release, component, filename):
     Check a _source.changes file and proceed as described in the script
     action flow . 
     """
-    global check_only
+    global options
     target_mails = archive_admin_email.split(",")
     Log.print_("Checking %s/%s/%s" % (release, component, filename))	
 
@@ -87,13 +87,19 @@ def check_source_changes(release, component, filename):
         os.makedirs(full_pre_build_dir, 0755)
 
     control_file = DebianControlFile("%s/%s" % (source_dir, filename))
-    
-    gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
-        +'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
 
-    if not gpg_sign_author:
-        Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
-        return
+    if not options.skip_gpg:    
+        gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
+            +'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
+    
+        if not gpg_sign_author:
+            Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
+            return
+    else:
+        gpg_sign_author = control_file['Changed-By']
+        if not gpg_sign_author:
+            Log.print_("ERROR: Changed-By was not found in %s" % changes_file)
+            return
 
     name_version = "%s_%s" % (control_file['Source'] \
         , control_file.version())
@@ -148,7 +154,7 @@ def check_source_changes(release, component, filename):
         report_msg += u"%s (%s) MD5: %s \n" \
             % (file_info.name, file_info.size, file_info.md5sum)		
     try:
-        if not check_only:
+        if not options.check_only:
             control_file.move(full_pre_build_dir)
     except DebianControlFile.MD5Error, e:
         report_msg = u"MD5 mismatch: Expected %s, got %s, file: %s\n" \
@@ -162,7 +168,7 @@ def check_source_changes(release, component, filename):
         send_mail_message(target_mails, report_title, report_msg)
         return			
     finally:
-        if not check_only:
+        if not options.check_only:
             control_file.remove()
         
     report_title = u"Upload for %s/%s/%s SUCCESSFUL\n" \
@@ -197,7 +203,7 @@ def check_release_component_dir(release, component):
     	*_source.changes will triger a verification/move action
     	files older than CLEANUP_TIME will be removed
     """
-    global check_only
+    global options
     Log.log("Checking %s/%s" % (release, component))
     file_list = glob.glob("%s/%s/%s/*" \
     	% (ftp_incoming_dir, release, component))
@@ -208,21 +214,24 @@ def check_release_component_dir(release, component):
         if fname.endswith("_source.changes"):
             check_source_changes(release, component, os.path.basename(fname))	
             # There could be an error, remove it anyway
-            if not check_only and os.path.exists(fname):
+            if not options.check_only and os.path.exists(fname):
                 os.unlink(fname)
         else:
-            if not check_only and time.time() - os.path.getmtime(fname) > CLEANUP_TIME:
+            if not options.check_only and time.time() - os.path.getmtime(fname) > CLEANUP_TIME:
                 print "Removing old file: %s" % fname
                 os.unlink(fname)
     Log.log("Done")
 
 def main():
-    global check_only
+    global options
     
     parser = OptionParser()
     parser.add_option("-c", "--check-only",
         action="store_true", dest="check_only", default=False,
-        help="Check only, don't move packages")    
+        help="Check only, don't move packages")
+    parser.add_option("-g", "--skip-gpg-check",
+        action="store_true", dest="skip_gpg", default=False,
+        help="Check only, don't move packages")            
     parser.add_option("-q", "--quiet",
     	action="store_false", dest="verbose", default=True,
         help="Do not print status messages to stdout")

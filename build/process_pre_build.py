@@ -120,12 +120,18 @@ def check_source_changes(release, component, filename):
         os.makedirs(destination_dir, 0755)
 
     control_file = DebianControlFile(changes_file)
-    gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
-        +'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
-
-    if not gpg_sign_author:
-        Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
-        return
+    if not options.skip_gpg:    
+        gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
+            +'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
+    
+        if not gpg_sign_author:
+            Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
+            return
+    else:
+        gpg_sign_author = control_file['Changed-By']
+        if not gpg_sign_author:
+            Log.print_("ERROR: Changed-By was not found in %s" % changes_file)
+            return
             
     report_title = "%s/%s/%s build FAILED\n" \
         % (release, component, filename)
@@ -253,22 +259,24 @@ def sbuild_package(release, component, control_file, arch):
     return rc
     
 def main():
-
-	parser = OptionParser()
-	parser.add_option("-q", "--quiet",
-		action="store_false", dest="verbose", default=True,
+    global options
+    parser = OptionParser()
+    parser.add_option("-g", "--skip-gpg-check",
+        action="store_true", dest="skip_gpg", default=False,
+        help="Check only, don't move packages")                
+    parser.add_option("-q", "--quiet",
+    	action="store_false", dest="verbose", default=True,
         help="don't print status messages to stdout")
-	(options, args) = parser.parse_args()
-	Log.verbose=options.verbose	
-	try:
-		lock = LockFile("build")
-	except LockFile.AlreadyLockedError:
-		Log.log("Unable to acquire lock, exiting")
-		return
-	
-	# Check and process the incoming directoy
-	check_pre_build_dir()
+    (options, args) = parser.parse_args()
+    Log.verbose=options.verbose	
+    try:
+    	lock = LockFile("build")
+    except LockFile.AlreadyLockedError:
+    	Log.log("Unable to acquire lock, exiting")
+    	return
     
+    # Check and process the incoming directoy
+    check_pre_build_dir()    
 	
 if __name__ == '__main__':
 	try:
