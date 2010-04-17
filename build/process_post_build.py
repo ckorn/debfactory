@@ -68,7 +68,7 @@ def extract_changelog(changes_file, component):
     extract_dir = '/tmp/changelog_extract'
     control_file = DebianControlFile(changes_file)
     name = control_file['Source']
-    name_version = name + '_' + control_file.upstream_version()
+    name_version = name + '_' + control_file.version()
     if name.startswith('lib'):
         prefix = name[:4]
     else:
@@ -76,10 +76,8 @@ def extract_changelog(changes_file, component):
          
     pool_dir = join(config['pool_dir'], 'pool', \
                                  component, prefix, name)
-    changelog_fn = join(pool_dir, changes_file.rsplit('.',1)[0]+'.changelog')    
     dirname = os.path.dirname(changes_file)
     if changes_file.endswith('_source.changes'): # Really extract
-        print "extracting"
         if os.path.isdir(extract_dir):
             shutil.rmtree(extract_dir)        
         for file in control_file.files_list():
@@ -90,21 +88,25 @@ def extract_changelog(changes_file, component):
                     Log.print_(output)
                     Log.print_("Unable to extract source to retrieve changelog")
                 else:
-                    changelog_file = os.path.join(extract_dir, 'debian', 'changelog')
-                    if not exists(changelog_file):
+                    extacted_changelog = os.path.join(extract_dir, 'debian', 'changelog')
+                    if not exists(extacted_changelog):
                         Log.print_("Unable to find changelog on source")
                     if not os.path.exists(pool_dir):
-                        os.makedirs(changelog_dir, 0755)
-                        shutil.copy(fn, changelog_dir)  
+                        os.makedirs(pool_dir, 0755)
+                    print pool_dir
+                    changelog_fn = join(pool_dir, os.path.basename(changes_file).rsplit('.',1)[0]+'.changelog')                    
+                    shutil.copy(extacted_changelog, changelog_fn)  
         if os.path.isdir(extract_dir):
             shutil.rmtree(extract_dir)
-        sys.exit
     else: # binary build .changes, create a link to the corresponding source
-        binaries = control_file['Binary'].split()
-        for package in binaries:
-            os.symlink(name_version+"_source.changelog", join(pool_dir, package+'_'+control_file.version()+'.changelog'))
-            #print name_version+"_source.changelog", join(pool_dir, package+'_'+control_file.version()+'.changelog')
-        sys.exit()
+        files = control_file.files_list()
+        for file in files:
+            if file.name.endswith('.deb'):  
+                try:
+                    os.symlink(name_version+"_source.changelog", \
+                        join(pool_dir, file.name.rsplit('.', 1)[0]+'.changelog'))
+                except OSError: # Already exists ?
+                    pass
                 
 def check_changes(release, component, filename):
     """	
@@ -115,13 +117,12 @@ def check_changes(release, component, filename):
     source_dir = "%s/%s/%s" \
         % (config['post_build_dir'], release, component)    
     changes_file = "%s/%s" % (source_dir, filename)
-    if not os.path.exists(changes_file):
-        Log.log('Skipping '+changes_file+' , file not found')
+    if not os.path.exists(changes_file):        
         return 1
     Log.print_("Including %s/%s/%s" % (release, component, filename))
                             
     # Remove previous failed status
-    if os.path.exists('%s.failed' % changes_file):
+    if exists('%s.failed' % changes_file):
         os.unlink('%s.failed' % changes_file)
                 
     control_file = DebianControlFile(changes_file)
@@ -155,7 +156,7 @@ def check_changes(release, component, filename):
     command = "reprepro -P normal --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
         % (component,  release, changes_file)
     (rc, output) = commands.getstatusoutput(command)
-    print output
+    print output    
     report_msg += output
     if rc == 0:
         extract_changelog(changes_file, component)
@@ -210,9 +211,11 @@ def check_release_component_dir(release, component):
     for fname in file_list: 
     	if check_changes(release, component, os.path.basename(fname)) == 0:            
             i386_changes = fname.replace('_source','_i386')        
-            check_changes(release, component, os.path.basename(i386_changes))
-            amd64_changes = fname.replace('_source','_amd64')
-            check_changes(release, component, os.path.basename(i386_changes))
+            if exists(i386_changes):
+                check_changes(release, component, os.path.basename(i386_changes))
+            amd64_changes = fname.replace('_source','_amd64')                
+            if exists(amd64_changes):
+                check_changes(release, component, os.path.basename(i386_changes))
                                            
     Log.log("Done")
 	

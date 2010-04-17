@@ -12,7 +12,7 @@ pre_build_dir = /build/pre_build
 # POST build directory
 post_build_dir = /build/post_build
 
-# changelog directory
+# pool directory
 pool_dir = /archive/getdeb/ubuntu
 
 # repository managment commands 

@@ -207,12 +207,10 @@ def sbuild_package(release, component, control_file, arch):
         (release, release, arch_str, dsc_file))
     log_link = "%s_%s.build" % (name_version, arch)
     if not os.path.exists(log_link):
-        log_link = "current"
-    if not os.path.exists(log_link):
         print "Unable to find build log symbolic link"
         return -1 
     try:
-        log_filename = os.readlink(log_link)
+        log_filename = os.readlink(log_link)        
     except OSError:
         print "Unable to find build log symbolic link"
         return -1
@@ -253,7 +251,7 @@ def sbuild_package(release, component, control_file, arch):
     report_title = "Build for %s/%s/%s (%s) %s\n" \
         % (release, component, name_version, arch, status)
     report_msg += '\n' + build_tail        
-    report_msg += "Log file: %s%s\n" % (base_url, os.path.basename(log_filename))
+    report_msg += "Log file: %s%s\n" % (base_url, log_filename)
     Log.print_(report_title)
     send_mail_message(target_mails, report_title, report_msg)	
     return rc
