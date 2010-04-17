@@ -28,6 +28,7 @@ import os
 import sys
 import time
 import glob
+import commands
 from optparse import OptionParser
 from configobj import ConfigObj
 
