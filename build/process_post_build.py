@@ -31,6 +31,7 @@ import sys
 import time
 import glob
 import commands
+import shutil
 from optparse import OptionParser
 from configobj import ConfigObj
 
@@ -48,7 +49,7 @@ config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
 config = ConfigObj(config_file)
 
 # Load configuration
-required_config = ['archive_admin_email', 'post_build_dir', 'changelog_dir']
+required_config = ['archive_admin_email', 'post_build_dir', 'pool_dir']
 for item in required_config:
     if not item in config:
         print "Config item",item,"is not defined"
@@ -56,43 +57,54 @@ for item in required_config:
     
 Log = Logger()	
 
-def extract_changelog(control_file, changes_file, component):
-    """ Extract the changelog if control_file contains a .dsc file """
+def extract_changelog(changes_file, component):
+    """ 
+    Extract the changelog according to the changes_file
+    If handling a _source.changes, extract the real changelog
+    If handling binary .changes just creat a link for each of the binaries  
+    """
     global config
+
     extract_dir = '/tmp/changelog_extract'
+    control_file = DebianControlFile(changes_file)
     name = control_file['Source']
-    name_version = control_file['Source']+"_"+control_file.version()
+    name_version = name + '_' + control_file.upstream_version()
     if name.startswith('lib'):
         prefix = name[:4]
     else:
         prefix = name[0]
          
-    changelog_dir = os.path.join(config['changelog_dir'], 'pool', \
-                                 component, prefix, name, name_version)    
-    if os.path.isdir(extract_dir):
-        shutil.rmtree(extract_dir)
-    dir_name = os.path.dirname(changes_file)
-    for file in control_file.files_list():
-        if file.name.endswith('.dsc'):
-            (rc, output) = commands.getstatusoutput('dpkg-source -x %s %s' % \
-                      (os.path.join(dir_name, file.name), extract_dir))
-            if rc <> 0 or not os.path.isdir(extract_dir):
-                Log.print_("Unable to extract source to retrieve changelog")
-            else:
-                file_list = []
-                changelog_files = os.path.join(extract_dir, 'debian', '*changelog')
-                file_list = glob.glob(changelog_files)
-                if not file_list:
-                    Log.print_("Unable to find changelog on source")
-                copyright_files = os.path.join(extract_dir, 'debian', '*copyright')                    
-                file_list.extend(glob.glob(copyright_files))                
-                print changelog_dir
-                if not os.path.exists(changelog_dir):
-                    os.makedirs(changelog_dir, 0755)
-                for fn in file_list:
-                    shutil.copy(fn, changelog_dir)
-    if os.path.isdir(extract_dir):
-        shutil.rmtree(extract_dir)
+    pool_dir = join(config['pool_dir'], 'pool', \
+                                 component, prefix, name)
+    changelog_fn = join(pool_dir, changes_file.rsplit('.',1)[0]+'.changelog')    
+    dirname = os.path.dirname(changes_file)
+    if changes_file.endswith('_source.changes'): # Really extract
+        print "extracting"
+        if os.path.isdir(extract_dir):
+            shutil.rmtree(extract_dir)        
+        for file in control_file.files_list():
+            if file.name.endswith('.dsc'):
+                (rc, output) = commands.getstatusoutput('dpkg-source -x %s %s' % \
+                          (join(dirname, file.name), extract_dir))
+                if rc <> 0 or not os.path.isdir(extract_dir):
+                    Log.print_(output)
+                    Log.print_("Unable to extract source to retrieve changelog")
+                else:
+                    changelog_file = os.path.join(extract_dir, 'debian', 'changelog')
+                    if not exists(changelog_file):
+                        Log.print_("Unable to find changelog on source")
+                    if not os.path.exists(pool_dir):
+                        os.makedirs(changelog_dir, 0755)
+                        shutil.copy(fn, changelog_dir)  
+        if os.path.isdir(extract_dir):
+            shutil.rmtree(extract_dir)
+        sys.exit
+    else: # binary build .changes, create a link to the corresponding source
+        binaries = control_file['Binary'].split()
+        for package in binaries:
+            os.symlink(name_version+"_source.changelog", join(pool_dir, package+'_'+control_file.version()+'.changelog'))
+            #print name_version+"_source.changelog", join(pool_dir, package+'_'+control_file.version()+'.changelog')
+        sys.exit()
                 
 def check_changes(release, component, filename):
     """	
@@ -113,14 +125,7 @@ def check_changes(release, component, filename):
         os.unlink('%s.failed' % changes_file)
                 
     control_file = DebianControlFile(changes_file)
-    
-    #gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
-    #    +'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
-    #
-    #if not gpg_sign_author:
-    #    Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
-    #    return
-    
+      
     name = control_file['Source'] 
     version = control_file.version()
     name_version = "%s_%s" % (control_file['Source'] \
@@ -147,14 +152,13 @@ def check_changes(release, component, filename):
         os.system("reprepro removesrc %s-getdeb-testing %s %s" 
             % (release, name,  version))    
     # Include the package
-    command = "reprepro --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
+    command = "reprepro -P normal --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
         % (component,  release, changes_file)
     (rc, output) = commands.getstatusoutput(command)
     print output
     report_msg += output
     if rc == 0:
-        if filename.endswith('_source.changes'):
-            extract_changelog(control_file)
+        extract_changelog(changes_file, component)
         status = "SUCCESSFUL"
         control_file.remove()
     else:
@@ -193,7 +197,8 @@ def check_release_dir(release):
 	
 def check_release_component_dir(release, component):
     """ 
-    Check a release/component directory
+    Check a release/component directory, first process _source.changes
+    then process the corresponding _i386 and _amd64 changes
     """
     global config
     Log.log("Checking %s/%s" % (release, component))

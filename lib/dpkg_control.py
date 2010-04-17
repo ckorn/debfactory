@@ -1,24 +1,25 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#  (C) Copyright 2009, GetDeb Team - https://launchpad.net/~getdeb
-#  --------------------------------------------------------------------
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#  --------------------------------------------------------------------
-#
-#  This file provides several functions to handle debian packages
-#  control files.
+"""
+  (C) Copyright 2009, GetDeb Team - https://launchpad.net/~getdeb
+  --------------------------------------------------------------------
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  --------------------------------------------------------------------
+
+  This file provides several functions to handle debian packages
+  control files.
+"""
 
 import sys
 import os
@@ -45,7 +46,7 @@ class DebianControlFile(object):
 			self.filename = filename
 		def __str__(self):
 			return repr(self.filename)
-
+	
 	class MD5Error(Exception):
 		"""
 		The MD5 checksum verification failed during a file copy/move
@@ -57,12 +58,12 @@ class DebianControlFile(object):
 			self.name = name
 		def __str__(self):
 			return repr(self.value1, self.value2, self.value3)
-
-
+	
+	
 	def __init__(self, filename=None):
 		self._filename = filename		
 		if filename:
-		          self.load(filename)
+            		self.load(filename)
 			
 	def load(self, filename):
 		"""
@@ -77,7 +78,7 @@ class DebianControlFile(object):
 		        break
 		self.section = section
 		control_file.close()
- 		
+	
 	def files_list(self):
 		if not self['Files']:
 			return None
@@ -89,7 +90,7 @@ class DebianControlFile(object):
 				file_parts[len(file_parts)-1])
 			file_info_list.append(file_info)
 		return file_info_list
-
+	
 	def version(self):
 		""" 
 		Returns the package version after removing the epoch part
@@ -97,18 +98,12 @@ class DebianControlFile(object):
 		version = self.section['Version']
 		epoch, sep, version = version.partition(":")
 		return version or epoch
-		   
+	
 	def upstream_version(self):
 		""" 
 		Returns the upstream version contained on the Version field
 		"""          
-		version_list = self.version().split("-")
-		
-		if len(version_list) == 1: # No dash, upstream = version
-			return version_list[0]		
-		version_list.pop() # remove last component (debian version)    
-
-		return '-'.join(version_list)
+		return self.version().rsplit("-", 1)[0]  
 
 	def verify_gpg(self, keyring, verbose=False):
 		"""Verifies the file GPG signature using the specified keyring
@@ -121,7 +116,7 @@ class DebianControlFile(object):
 		      "gpg --no-options --no-default-keyring " \
 			"--keyring %s --verify --logger-fd=1 %s" \
 			% (keyring, self._filename)
-
+	
 		sign_author = None
 		(rc, output) = commands.getstatusoutput(gpg_cmd)
 		output = unicode(output, 'utf-8')	
@@ -180,7 +175,7 @@ class DebianControlFile(object):
 					raise self.MD5Error(file.md5sum, found_md5, file.name)                    
 					return        
 		return None
-
+	
 	def move(self, destination_dir=None, source_dir=None, md5check=True):
 		"""
 		Moves the files listed on the control file
@@ -193,7 +188,7 @@ class DebianControlFile(object):
 		if not os.path.isdir(destination_dir):
 			raise Exception
 			return
-
+	
 		file_list = self.files_list()
 		file_list.append(self.FileInfo(None, None, \
 			os.path.basename(self._filename)))
@@ -214,7 +209,7 @@ class DebianControlFile(object):
 					return
 					
 		return None
-
+	
 	def remove(self, source_dir=None):
 		"""
 		Removes all files listed and the control file itself
@@ -231,7 +226,7 @@ class DebianControlFile(object):
 			full_filename = "%s/%s" % (source_dir, file.name)
 			if os.path.exists(full_filename):
 				os.unlink(full_filename)
-
+	
 	def __getitem__(self, item):
 		try:
 			item = self.section[item]

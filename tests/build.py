@@ -23,7 +23,7 @@
 
 """
 
-dsc_url = "http://archive.getdeb.net//getdeb/ubuntu/pool/apps/r/rosegarden/rosegarden_10.02.1-1~getdeb1.dsc"
+dsc_url = "http://archive.ubuntu.com/ubuntu/pool/universe/n/netcat/netcat_1.10-38.dsc"
 component = 'apps'
 
 import os
@@ -67,3 +67,4 @@ os.chdir(run_dir)
 # Test the process
 run_or_exit('build/process_incoming.py --skip-gpg-check')
 run_or_exit('build/process_pre_build.py --skip-gpg-check')
+run_or_exit('build/process_post_build.py')
