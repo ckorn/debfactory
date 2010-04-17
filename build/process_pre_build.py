@@ -250,7 +250,7 @@ def sbuild_package(release, component, control_file, arch):
         status = "FAILED"
     report_title = "Build for %s/%s/%s (%s) %s\n" \
         % (release, component, name_version, arch, status)
-    report_msg += '\n' + build_tail        
+    report_msg += '\n' + build_tail + '\n'
     report_msg += "Log file: %s%s\n" % (base_url, log_filename)
     Log.print_(report_title)
     send_mail_message(target_mails, report_title, report_msg)	
