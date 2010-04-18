@@ -151,7 +151,7 @@ def check_changes(release, component, filename):
     # Remove all packages related to source package
     if(filename.endswith("_source.changes")):
         os.system("reprepro removesrc %s-getdeb-testing %s %s" 
-            % (release, name,  debian_contro['Version']))    
+            % (release, name,  control_file['Version']))    
     # Include the package
     command = "reprepro -P normal --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
         % (component,  release, changes_file)
