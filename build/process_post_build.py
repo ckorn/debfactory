@@ -151,7 +151,7 @@ def check_changes(release, component, filename):
     # Remove all packages related to source package
     if(filename.endswith("_source.changes")):
         os.system("reprepro removesrc %s-getdeb-testing %s %s" 
-            % (release, name,  version))    
+            % (release, name,  debian_contro['Version']))    
     # Include the package
     command = "reprepro -P normal --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
         % (component,  release, changes_file)
@@ -215,7 +215,7 @@ def check_release_component_dir(release, component):
                 check_changes(release, component, os.path.basename(i386_changes))
             amd64_changes = fname.replace('_source','_amd64')                
             if exists(amd64_changes):
-                check_changes(release, component, os.path.basename(i386_changes))
+                check_changes(release, component, os.path.basename(amd64_changes))
                                            
     Log.log("Done")
 	
