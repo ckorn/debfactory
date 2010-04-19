@@ -82,6 +82,22 @@ def check_command(filename):
 			version = fields[4]
 			command = "reprepro removesrc %s %s %s " \
 				% (codename,  source_package, version)
+
+			if source_package.startswith('lib'):
+				prefix = source_package[:4]
+			else:
+				prefix = source_package[0]
+
+			components = ["apps", "games"]
+			for component in components:
+				pool_dir = join(config['pool_dir'], 'pool', \
+        	                                             component, prefix, source_package)
+				changelogs = glob.glob("%s/*.changelog" % (pool_dir))
+				for changelog in changelogs:
+					deb = changelog.rsplit('.', 1)[0]+'.deb'
+					if not os.path.exists(deb):
+						os.unlink(changelog)
+
 		elif action == "copy":
 			if len(fields) != 6:
 				failed = True

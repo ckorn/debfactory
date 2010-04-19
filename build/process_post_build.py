@@ -151,7 +151,20 @@ def check_changes(release, component, filename):
     # Remove all packages related to source package
     if(filename.endswith("_source.changes")):
         os.system("reprepro removesrc %s-getdeb-testing %s %s" 
-            % (release, name,  control_file['Version']))    
+            % (release, name,  control_file['Version']))
+        # Delete orphaned changelogs
+        if name.startswith('lib'):
+            prefix = name[:4]
+        else:
+            prefix = name[0]
+
+        pool_dir = join(config['pool_dir'], 'pool', \
+                        component, prefix, name)
+        changelogs = glob.glob("%s/*.changelog" % (pool_dir))
+        for changelog in changelogs:
+            deb = changelog.rsplit('.', 1)[0]+'.deb'
+                if not os.path.exists(deb):
+                    os.unlink(changelog)
     # Include the package
     command = "reprepro -P normal --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
         % (component,  release, changes_file)
