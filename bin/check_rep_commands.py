@@ -91,7 +91,7 @@ def check_command(filename):
 			components = ["apps", "games"]
 			for component in components:
 				pool_dir = join(config['pool_dir'], 'pool', \
-        	                                             component, prefix, source_package)
+						component, prefix, source_package)
 				changelogs = glob.glob("%s/*.changelog" % (pool_dir))
 				for changelog in changelogs:
 					deb = changelog.rsplit('.', 1)[0]+'.deb'

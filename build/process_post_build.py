@@ -163,8 +163,9 @@ def check_changes(release, component, filename):
         changelogs = glob.glob("%s/*.changelog" % (pool_dir))
         for changelog in changelogs:
             deb = changelog.rsplit('.', 1)[0]+'.deb'
-                if not os.path.exists(deb):
-                    os.unlink(changelog)
+            if not os.path.exists(deb):
+                Log.print_("Unlinking changelog: %s" % (changelog))
+                os.unlink(changelog)
     # Include the package
     command = "reprepro -P normal --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
         % (component,  release, changes_file)
