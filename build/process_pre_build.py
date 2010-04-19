@@ -230,7 +230,9 @@ def sbuild_package(release, component, control_file, arch):
                 file_list = changes_file.files_list()
                 for file_info in file_list:
                     report_msg += "%s (%s) MD5: %s \n" \
-                        % (file_info.name, file_info.size, file_info.md5sum)                
+                        % (file_info.name, file_info.size, file_info.md5sum)
+                    (dummy, lintian_output) = commands.getstatusoutput('lintian -i -I -E --pedantic ./%s' % (file_info.name))
+                    report_msg += "Lintian output:\n%s\n\n" % (lintian_output)
                 try:
                     changes_file.move(destination_dir)
                 except DebianControlFile.MD5Error,e:
