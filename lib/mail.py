@@ -1,58 +1,30 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#    (C) Copyright 2009, GetDeb Team - https://launchpad.net/~getdeb
-#    --------------------------------------------------------------------
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#    --------------------------------------------------------------------
-"""
-Local auxiliar functions library
 """
 
-import commands
+    (C) Copyright 2009-2010, GetDeb Team - https://launchpad.net/~getdeb
+    --------------------------------------------------------------------
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    --------------------------------------------------------------------
+
+    Mail send library
+"""
+
 from smtplib import SMTP
 from email.MIMEText import MIMEText
 from email.Header import Header
 from email.Utils import parseaddr, formataddr
-
-#!/usr/bin/python
-#
-#  (C) Copyright 2009, GetDeb Team - https://launchpad.net/~getdeb
-#  --------------------------------------------------------------------
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#  --------------------------------------------------------------------
-#
-
-import smtplib
-import atexit
-import time
-
-def uniq(alist):
-    set = {}
-    return [set.setdefault(e,e) for e in alist if e not in set]
-		
 
 def send_mail_message(destination, subject, body):
     """
@@ -60,14 +32,13 @@ def send_mail_message(destination, subject, body):
     """
     fromaddr = '"GetDeb Automated Builder" <autobuild@getdeb.net>'
     if type(destination) is list:        
-        destination = uniq(destination)
         for dest in destination:
             send_mail(fromaddr, dest, subject, body)
     else:
         send_mail(fromaddr, destination, subject, body)    
         
 def send_mail(sender, recipient, subject, body):
-    """Send an email.
+    """ Send a mail.
 
     All arguments should be Unicode strings (plain ASCII works as well).
 

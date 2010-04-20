@@ -44,24 +44,18 @@ LIB_DIR = join(LAUNCH_DIR, '..', 'lib')
 sys.path.insert(0, LIB_DIR)
 
 from log import Logger
-from mail import send_mail_message
+from mail import send_mail
 from dpkg_control import DebianControlFile
 from lockfile import LockFile
-
+from config import check_config
 
 
 config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
 config = ConfigObj(config_file)
 
-# Load configuration
-try:
-	archive_admin_email = config['archive_admin_email']
-	ftp_incoming_dir = config['ftp_incoming_dir']
-	pre_build_dir = config['pre_build_dir']
-except Exception:
-	print "Configuration error"
-	print `sys.exc_info()[1]`
-	sys.exit(3)
+# Check for required configuration
+check_config(config,
+             ['sender_email', 'ftp_incoming_dir', 'pre_build_dir'])
 
 # Clean up all files older than 24h
 CLEANUP_TIME = 24*3600
@@ -74,13 +68,13 @@ def check_source_changes(release, component, filename):
     action flow . 
     """
     global options
-    target_mails = archive_admin_email.split(",")
+    global config
     Log.print_("Checking %s/%s/%s" % (release, component, filename))	
 
     source_dir = "%s/%s/%s" \
-        % (ftp_incoming_dir, release, component)
+        % (config['ftp_incoming_dir'], release, component)
     full_pre_build_dir = "%s/%s/%s" \
-        % (pre_build_dir, release, component)
+        % (config['pre_build_dir'], release, component)
     changes_file = "%s/%s" % (source_dir, filename)
                 
     if not os.path.exists(full_pre_build_dir):
@@ -112,7 +106,7 @@ def check_source_changes(release, component, filename):
             " the target %s\n" % (package_release, release)
         Log.print_(report_msg)
         Log.print_(report_title)
-        send_mail_message(target_mails, report_title, report_msg)
+        send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)
         return
         
 
@@ -120,8 +114,7 @@ def check_source_changes(release, component, filename):
         % (release, component, name_version)
     report_msg = u"File: %s/%s/%s\n" % (release, component, filename)
     report_msg  += '-----------------\n'
-
-    target_mails.append(gpg_sign_author)    
+    
     report_msg  = u"Signed By: %s\n\n" % gpg_sign_author
 
     orig_file_extensions = [ "gz", "bz2", "lzma", "xz" ]
@@ -151,7 +144,7 @@ def check_source_changes(release, component, filename):
         report_msg += u"ERROR: Missing orig.tar.[gz,bz2,lzma,xz] for %s\n" \
             % (changes_file)
         Log.print_(report_msg)
-        send_mail_message(target_mails, report_title, report_msg)
+        send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)
         return
         
     # Get list of files described on the changes	
@@ -167,28 +160,23 @@ def check_source_changes(release, component, filename):
     except DebianControlFile.MD5Error, e:
         report_msg = u"MD5 mismatch: Expected %s, got %s, file: %s\n" \
             % (e.expected_md5, e.found_md5, e.name)	
-        Log.print_(report_msg)
-        send_mail_message(target_mails, report_title, report_msg)
-        return
     except DebianControlFile.FileNotFoundError, e:
-        report_msg = u"File not found: %s" % (e.filename)			
-        Log.print_(report_msg)
-        send_mail_message(target_mails, report_title, report_msg)
-        return			
+        report_msg = u"File not found: %s" % (e.filename)
+    else:
+        report_title = u"Upload for %s/%s/%s SUCCESSFUL\n" \
+            % (release, component, name_version)        			
     finally:
         if not options.check_only:
-            control_file.remove()
-        
-    report_title = u"Upload for %s/%s/%s SUCCESSFUL\n" \
-        % (release, component, name_version)
+            control_file.remove()    
     Log.print_(report_title)
-    send_mail_message(target_mails, report_title, report_msg)	
+    send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)	
 
 def check_incoming_dir():
     """
     Check the ftp incoming directory for release directories
     """	
-    file_list = glob.glob("%s/*" % (ftp_incoming_dir))
+    global config
+    file_list = glob.glob("%s/*" % (config['ftp_incoming_dir']))
     for file in file_list:
         if os.path.isdir(file):
             release = os.path.basename(file)
@@ -198,8 +186,9 @@ def check_release_dir(release):
     """
     Check a release directory for components
     """
+    global config
     file_list = glob.glob("%s/%s/*" \
-    	% (ftp_incoming_dir, release))	
+    	% (config['ftp_incoming_dir'], release))	
     for file in file_list:
         if os.path.isdir(file):
             component = os.path.basename(file)
@@ -212,9 +201,10 @@ def check_release_component_dir(release, component):
     	files older than CLEANUP_TIME will be removed
     """
     global options
+    global config
     Log.log("Checking %s/%s" % (release, component))
     file_list = glob.glob("%s/%s/%s/*" \
-    	% (ftp_incoming_dir, release, component))
+    	% (config['ftp_incoming_dir'], release, component))
 
     for fname in file_list:
         if not os.path.exists(fname): # File was removed ???

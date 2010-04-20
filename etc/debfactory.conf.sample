@@ -1,7 +1,8 @@
 # Example configuration file for the debfactory tools
 
-# This email will receive upload status the messages
-archive_admin_email = admin@somewhere.com
+# This email address will be used as the mail sender on all build related
+# mails
+sender_email = "GetDeb Automated Builder" <autobuild@getdeb.net>
 
 # FTP incoming directory
 ftp_incoming_dir = /home/ftp/incoming
@@ -17,9 +18,6 @@ pool_dir = /archive/getdeb/ubuntu
 
 # repository managment commands 
 rep_commands_dir = /build/rep_commands
-
-# Logs directory
-logs_dir = /build/logs
 
 # Base url
 base_url = "http://abs.getdeb.net"

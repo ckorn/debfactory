@@ -1,21 +1,22 @@
 #!/usr/bin/python
-#
-#  (C) Copyright 2009-2010, GetDeb Team - https://launchpad.net/~getdeb
-#  --------------------------------------------------------------------
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#  --------------------------------------------------------------------
+# -*- coding: utf-8 -*-
 """
+  (C) Copyright 2009-2010, GetDeb Team - https://launchpad.net/~getdeb
+  --------------------------------------------------------------------
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  --------------------------------------------------------------------
+
   This script will check the post_build directory
   When *_.changes is found, it's contents are verified and
   the files are included in the testing_repository
@@ -41,20 +42,16 @@ LIB_DIR = join(LAUNCH_DIR, '..', 'lib')
 sys.path.insert(0, LIB_DIR)
 
 from log import Logger
-from mail import send_mail_message
 from dpkg_control import DebianControlFile
 from lockfile import LockFile
+from config import check_config
 
 config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
 config = ConfigObj(config_file)
 
-# Load configuration
-required_config = ['archive_admin_email', 'post_build_dir', 'pool_dir']
-for item in required_config:
-    if not item in config:
-        print "Config item",item,"is not defined"
-        sys.exit(3)
-    
+# Check for required configuration
+check_config(config, ['sender_email', 'post_build_dir', 'pool_dir'])
+
 Log = Logger()	
 
 def extract_changelog(changes_file, component):
@@ -113,7 +110,6 @@ def check_changes(release, component, filename):
     Check a _.changes file and include it into the repository
     """
     global config
-    target_emails = config['archive_admin_email'].split(",")
     source_dir = "%s/%s/%s" \
         % (config['post_build_dir'], release, component)    
     changes_file = "%s/%s" % (source_dir, filename)
@@ -164,7 +160,7 @@ def check_changes(release, component, filename):
         for changelog in changelogs:
             deb = changelog.rsplit('.', 1)[0]+'.deb'
             if not os.path.exists(deb):
-                Log.print_("Unlinking changelog: %s" % (changelog))
+                Log.print_("Removing changelog: %s" % (changelog))
                 os.unlink(changelog)
     # Include the package
     command = "reprepro -P normal --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
@@ -183,7 +179,6 @@ def check_changes(release, component, filename):
     report_title = "Included on testing %s/%s/%s %s\n" \
         % (release, component, name_version, status)    
     Log.print_(report_title)  
-    send_mail_message(target_emails, report_title, output)
     return rc    
 
 def check_post_build_dir():
