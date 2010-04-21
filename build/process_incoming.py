@@ -29,7 +29,7 @@
   
   Files will be verified with the following rules
 		...		
-  A lock file is used to prevent concurrent runs		
+  A lock file is used to prevent concurrent runs
 """
 import os
 import sys
@@ -60,23 +60,23 @@ check_config(config,
 # Clean up all files older than 24h
 CLEANUP_TIME = 24*3600
 
-Log = Logger()	
+Log = Logger()
 
 def check_source_changes(release, component, filename):
-    """	
+    """
     Check a _source.changes file and proceed as described in the script
     action flow . 
     """
     global options
     global config
-    Log.print_("Checking %s/%s/%s" % (release, component, filename))	
+    Log.print_("Checking %s/%s/%s" % (release, component, filename))
 
     source_dir = "%s/%s/%s" \
         % (config['ftp_incoming_dir'], release, component)
     full_pre_build_dir = "%s/%s/%s" \
         % (config['pre_build_dir'], release, component)
     changes_file = "%s/%s" % (source_dir, filename)
-                
+
     if not os.path.exists(full_pre_build_dir):
         os.makedirs(full_pre_build_dir, 0755)
 
@@ -85,7 +85,7 @@ def check_source_changes(release, component, filename):
     if not options.skip_gpg:    
         gpg_sign_author = control_file.verify_gpg(os.environ['HOME'] \
             +'/debfactory/keyrings/uploaders.gpg ', Log.verbose)
-    
+
         if not gpg_sign_author:
             Log.print_("ERROR: Unable to verify GPG key for %s" % changes_file)
             return
@@ -101,14 +101,13 @@ def check_source_changes(release, component, filename):
     package_release = control_file['Distribution']
     if package_release != release:
         report_title = "Upload for %s/%s/%s FAILED\n" \
-            % (release, component, name_version)        
+            % (release, component, name_version)
         report_msg = u"The release %s on debian/changelog does noth match"\
             " the target %s\n" % (package_release, release)
         Log.print_(report_msg)
         Log.print_(report_title)
         send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)
         return
-        
 
     report_title = "Upload for %s/%s/%s FAILED\n" \
         % (release, component, name_version)
@@ -125,11 +124,11 @@ def check_source_changes(release, component, filename):
         orig_file = "%s_%s.orig.tar.%s" % (control_file['Source'], \
             control_file.upstream_version(), orig_file_extension)
 
-        if not orig_file:		
+        if not orig_file:
             Log.print_("FIXME: This should never happen")
             # FIXME: This should never happen but we should send a message
             # anyway
-            return	
+            return
 
         if os.path.exists("%s/%s" % (source_dir, orig_file)):
             found_orig_file = True
@@ -140,41 +139,41 @@ def check_source_changes(release, component, filename):
                 Log.print_('No orig.tar.%s, using %s ' % (orig_file_extension, pre_build_orig))
 
     if not found_orig_file:
-        print "report_msg:\n", report_msg			
+        print "report_msg:\n", report_msg
         report_msg += u"ERROR: Missing orig.tar.[gz,bz2,lzma,xz] for %s\n" \
             % (changes_file)
         Log.print_(report_msg)
         send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)
         return
-        
-    # Get list of files described on the changes	
-    report_msg += u"List of files:\n"	
+
+    # Get list of files described on the changes
+    report_msg += u"List of files:\n"
     report_msg += u"--------------\n"
     file_list = control_file.files_list()
     for file_info in file_list:
         report_msg += u"%s (%s) MD5: %s \n" \
-            % (file_info.name, file_info.size, file_info.md5sum)		
+            % (file_info.name, file_info.size, file_info.md5sum)
     try:
         if not options.check_only:
             control_file.move(full_pre_build_dir)
     except DebianControlFile.MD5Error, e:
         report_msg = u"MD5 mismatch: Expected %s, got %s, file: %s\n" \
-            % (e.expected_md5, e.found_md5, e.name)	
+            % (e.expected_md5, e.found_md5, e.name)
     except DebianControlFile.FileNotFoundError, e:
         report_msg = u"File not found: %s" % (e.filename)
     else:
         report_title = u"Upload for %s/%s/%s SUCCESSFUL\n" \
-            % (release, component, name_version)        			
+            % (release, component, name_version)
     finally:
         if not options.check_only:
-            control_file.remove()    
+            control_file.remove()
     Log.print_(report_title)
-    send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)	
+    send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)
 
 def check_incoming_dir():
     """
     Check the ftp incoming directory for release directories
-    """	
+    """
     global config
     file_list = glob.glob("%s/*" % (config['ftp_incoming_dir']))
     for file in file_list:
@@ -188,12 +187,12 @@ def check_release_dir(release):
     """
     global config
     file_list = glob.glob("%s/%s/*" \
-    	% (config['ftp_incoming_dir'], release))	
+        % (config['ftp_incoming_dir'], release))
     for file in file_list:
         if os.path.isdir(file):
             component = os.path.basename(file)
             check_release_component_dir(release, component)
-            
+
 def check_release_component_dir(release, component):
     """ 
     Check a release/component directory
@@ -204,13 +203,13 @@ def check_release_component_dir(release, component):
     global config
     Log.log("Checking %s/%s" % (release, component))
     file_list = glob.glob("%s/%s/%s/*" \
-    	% (config['ftp_incoming_dir'], release, component))
+        % (config['ftp_incoming_dir'], release, component))
 
     for fname in file_list:
         if not os.path.exists(fname): # File was removed ???
             continue
         if fname.endswith("_source.changes"):
-            check_source_changes(release, component, os.path.basename(fname))	
+            check_source_changes(release, component, os.path.basename(fname))
             # There could be an error, remove it anyway
             if not options.check_only and os.path.exists(fname):
                 os.unlink(fname)
@@ -229,13 +228,13 @@ def main():
         help="Check only, don't move packages")
     parser.add_option("-g", "--skip-gpg-check",
         action="store_true", dest="skip_gpg", default=False,
-        help="Check only, don't move packages")            
+        help="Check only, don't move packages")
     parser.add_option("-q", "--quiet",
-    	action="store_false", dest="verbose", default=True,
+        action="store_false", dest="verbose", default=True,
         help="Do not print status messages to stdout")
     (options, args) = parser.parse_args()
     Log.verbose = options.verbose
-    check_only = options.check_only	
+    check_only = options.check_only
     try:
         lock = LockFile("ftp_incoming")
     except LockFile.AlreadyLockedError:
