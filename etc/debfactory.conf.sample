@@ -2,7 +2,7 @@
 
 # This email address will be used as the mail sender on all build related
 # mails
-sender_email = "GetDeb Automated Builder" <autobuild@getdeb.net>
+sender_email = GetDeb Automated Builder <autobuild@getdeb.net>
 
 # FTP incoming directory
 ftp_incoming_dir = /home/ftp/incoming

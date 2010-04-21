@@ -169,6 +169,8 @@ def check_source_changes(release, component, filename):
 
         # Only move the source to post_build after building something
         control_file.move(full_post_build_dir)
+    else:
+        control_file.remove()
 
 def sbuild_package(release, component, control_file, arch):
     """Attempt to build package using sbuild """
