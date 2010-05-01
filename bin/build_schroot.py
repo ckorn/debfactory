@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 """
-chroot build helper script
+chroot build script
 
 This script automates the creation of a file based schroot image
 
@@ -44,9 +44,9 @@ def command_line_parser():
 	command line parameters
 	"""        
 	parser = OptionParser()
-	parser.add_option("-c", "--chroot-dir",
+	parser.add_option("-c", "--chroot-base-dir",
 	    action = "store", type="string", dest="chroot_dir", \
-	    help = "Directory to store the chroot image file", \
+	    help = "Base directory to store the chroot image file", \
 	    default = '', \
 	    )                        
 	parser.add_option("-d", "--dist", \
@@ -55,7 +55,7 @@ def command_line_parser():
 	parser.add_option("-a", "--arch", \
 	    action = "store", type="string", dest="arch", \
 	    help = "Target architecture for debootstrap")
-	parser.add_option("-s", "--sbioçd", \
+	parser.add_option("-s", "--sbuild", \
 	    action = "store_true", dest="sbuild", default=False, \
 	    help = "Configure for sbuild")            
 	parser.add_option("-p", "--provider", \
@@ -146,7 +146,7 @@ def check_chroot_release(basedir):
 		selected_arch = raw_input("Please enter the chroot architecture, options are: "+','.join(available_archs)+"\n["+default_arch+"]: ")
 		selected_arch = selected_arch or default_arch
 
-	chrootdir = os.path.join(basedir, selected_release+"."+selected_arch)
+	chrootdir = os.path.join(basedir, selected_release + "-" + selected_arch)
 	check_create_dir(chrootdir)
 	return (selected_release, selected_arch, chrootdir)
 
@@ -196,47 +196,45 @@ deb-src http://mirror/ubuntu release-security multiverse
     os.system("echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
 
 def chroot_postinstall_update(chrootdir, release, arch):
-	global options
-	"""
-	Perform post-install update actions"
-	"""
-	print "Post install actions for the chroot image"
-	print "Installing some support tools"
-	os.system("chroot "+chrootdir+" apt-get -y update")
-	os.system("chroot "+chrootdir+" apt-get -y --force-yes install gnupg apt-utils")
-	os.system("chroot "+chrootdir+" apt-get -y update")
-	os.system("chroot "+chrootdir+" locale-gen "+lang)	
-	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install wget dh-make fakeroot cdbs sudo")
-	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install devscripts vim")
-	os.system("mount --bind /proc "+chrootdir +"/proc")
-	os.system("chroot "+chrootdir+" sudo DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install console-setup")
-	os.system("umount "+chrootdir +"/proc")
-	# We need to install build-essential for hardy, it is not contained on the buildd variant
-	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install build-essential")
-	os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends upgrade")
-	os.system("chroot "+chrootdir+" apt-get clean")
-	print "Creating the schroot image "+chrootdir+".tar.gz, please be patient..."
-	os.system("tar -C "+chrootdir+" -czf "+chrootdir+".tar.gz .")
-	os.system("du -sh "+chrootdir+".tar.gz")
-	shutil.rmtree(chrootdir)
-	# TODO: Create a config file at /etc/schroot/chroot.d/ instead
-	is_configured = int(commands.getoutput("grep -v '#' /etc/schroot/schroot.conf | grep -c "+release+"."+arch))
-	if is_configured==0:
-		schroot_conf = "\n"
-		schroot_conf += "["+release+"."+arch+"]"+"\n"
-		schroot_conf += "type=file\n"
-		schroot_conf += "file="+chrootdir+".tar.gz\n"
-		schroot_conf += "groups=admin\n"
-		if options.sbuild == 1:
-			schroot_conf += "root-groups=sbuild\n"
-		if arch=="i386":
-			schroot_conf += "personality=linux32\n" 
-		FILE = open("/etc/schroot/schroot.conf","a")
-		FILE.writelines(schroot_conf)
-		FILE.close()
-		#print "root-groups=root,sbuild,admin"
-	print ""
-	print "You can now use your schroot with:\n\tschroot -c "+release+"."+arch+" -p"
+    global options
+    """
+    Perform post-install update actions"
+    """
+    print "Post install actions for the chroot image"
+    print "Installing some support tools"
+    os.system("chroot "+chrootdir+" apt-get -y update")
+    os.system("chroot "+chrootdir+" apt-get -y --force-yes install gnupg apt-utils")
+    os.system("chroot "+chrootdir+" apt-get -y update")
+    os.system("chroot "+chrootdir+" locale-gen "+lang)	
+    os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install wget dh-make fakeroot cdbs sudo")
+    os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install devscripts vim")
+    os.system("mount --bind /proc "+chrootdir +"/proc")
+    os.system("chroot "+chrootdir+" sudo DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install console-setup")
+    os.system("umount "+chrootdir +"/proc")
+    # We need to install build-essential for hardy, it is not contained on the buildd variant
+    os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install build-essential")
+    os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends upgrade")
+    os.system("chroot "+chrootdir+" apt-get clean")
+    print "Creating the schroot image "+chrootdir+".tar.gz, please be patient..."
+    os.system("tar -C "+chrootdir+" -czf "+chrootdir+".tar.gz .")
+    os.system("du -sh "+chrootdir+".tar.gz")
+    shutil.rmtree(chrootdir)
+    # TODO: Create a config file at /etc/schroot/chroot.d/ instead    
+    schroot_conf = "\n"
+    schroot_conf += "["+release+"-"+arch+"]"+"\n"
+    schroot_conf += "type=file\n"
+    schroot_conf += "file="+chrootdir+".tar.gz\n"
+    schroot_conf += "groups=admin\n"
+    if options.sbuild == 1:
+    	schroot_conf += "root-groups=sbuild\n"
+    if arch=="i386":
+    	schroot_conf += "personality=linux32\n"
+    config_fn = "/etc/schroot/chroot.d/" + release + "-" + arch         
+    config_file = open(config_fn, 'w')
+    config_file.writelines(schroot_conf)
+    config_file.close()
+    print ""
+    print "You can now use your schroot with:\n\tschroot -c "+release+"-"+arch+" -p"
 
 
 print 
