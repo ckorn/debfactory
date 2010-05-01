@@ -137,14 +137,14 @@ def check_source_changes(release, component, filename):
         report_msg = "MD5 mismatch: Expected %s, got %s, file: %s\n" \
             % (e.expected_md5, e.found_md5, e.name)
         Log.print_(report_msg)
+	control_file.remove()
         send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)
-        control_file.remove()
         return
     except DebianControlFile.FileNotFoundError, e:
         report_msg = "File not found: %s\n" % (e.filename)
         Log.print_(report_msg)
+	control_file.remove()
         send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)
-        control_file.remove()
         return
     dsc_file = "%s/%s_%s.dsc" \
         % (destination_dir, control_file['Source'] \
@@ -152,8 +152,8 @@ def check_source_changes(release, component, filename):
     if not os.path.exists(dsc_file):
         report_msg = ".dsc file not found: %s\n" % (dsc_file)
         Log.print_(report_msg)
+	control_file.remove()
         send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)
-        control_file.remove()
         return
 
     full_post_build_dir = "%s/%s/%s" % (config['post_build_dir'],  release \
@@ -248,7 +248,7 @@ def sbuild_package(release, component, control_file, arch):
     report_msg += '\n' + build_tail + '\n'
     report_msg += "Log file: %s%s\n" % (config['base_url'], log_filename)
     Log.print_(report_title)
-    send_mail(config['sender_email'], target_email, report_title, report_msg)
+    send_mail(config['sender_email'], target_email.decode('utf-8'), report_title, report_msg)
     return rc
 
 def main():
