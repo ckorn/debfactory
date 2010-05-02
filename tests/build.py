@@ -71,4 +71,7 @@ os.chdir(run_dir)
 # Test the process
 run_or_exit('build/process_incoming.py --skip-gpg-check -i /tmp/build_incoming -o /tmp/pre_build')
 run_or_exit('build/process_pre_build.py --skip-gpg-check -i /tmp/pre_build -o /tmp/post_build')
-run_or_exit('build/process_post_build.py -i /tmp/post_build')
+if not os.environ.get('REPREPRO_BASE_DIR'):
+    print "Skipping reprepro test, REPREPRO_BASE_DIR not defined"
+else:
+    run_or_exit('build/process_post_build.py -i /tmp/post_build')
