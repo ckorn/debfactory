@@ -50,7 +50,7 @@ config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
 config = ConfigObj(config_file)
 
 # Check for required configuration
-check_config(config, ['sender_email', 'pre_build_dir', 'post_build_dir', 'base_url'])
+check_config(config, ['sender_email', 'base_url'])
 
 Log = Logger()
 
@@ -58,9 +58,9 @@ def check_pre_build_dir():
     """
     Check the pre build directory for release directories
     """
-    global config
+    global options
     file_list = glob.glob("%s/*" \
-        % (config['pre_build_dir']))
+        % (options.input_dir))
     for file in file_list:
         if os.path.isdir(file):
             release = os.path.basename(file)
@@ -70,9 +70,9 @@ def check_release_dir(release):
     """
     Check a release directory for components
     """
-    global config
+    global options
     file_list = glob.glob("%s/%s/*" \
-        % (config['pre_build_dir'], release))
+        % (options.input_dir, release))
     for file in file_list:
         if os.path.isdir(file):
             component = os.path.basename(file)
@@ -83,10 +83,10 @@ def check_release_component_dir(release, component):
     Check a release/component directory
     	*_source.changes will triger a verification/build action
     """
-    global config
+    global options
     Log.log("Checking %s/%s" % (release, component))
     file_list = glob.glob("%s/%s/%s/*_source.changes" \
-        % (config['pre_build_dir'], release, component))
+        % (options.input_dir, release, component))
 
     for fname in file_list:
         check_source_changes(release, component \
@@ -99,11 +99,11 @@ def check_source_changes(release, component, filename):
     Check a _source.changes file and proceed as described in the script
     action flow . 
     """
-    global config
+    global config, options
     Log.print_("Building %s/%s/%s" % (release, component, filename))
 
     source_dir = "%s/%s/%s" \
-        % (config['pre_build_dir'], release, component)
+        % (options.input_dir, release, component)
     destination_dir = "/tmp/build-%s-%s" % (release, component)    
     changes_file = "%s/%s" % (source_dir, filename)
 
@@ -156,7 +156,7 @@ def check_source_changes(release, component, filename):
         send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)
         return
 
-    full_post_build_dir = "%s/%s/%s" % (config['post_build_dir'],  release \
+    full_post_build_dir = "%s/%s/%s" % (options.output_dir,  release \
         , component)
     if not os.path.exists(full_post_build_dir):
         os.makedirs(full_post_build_dir, 0755)
@@ -174,13 +174,13 @@ def check_source_changes(release, component, filename):
 
 def sbuild_package(release, component, control_file, arch):
     """Attempt to build package using sbuild """
-    global config
+    global config, options
     target_email = control_file['Changed-By']
     name_version = "%s_%s" % (control_file['Source']
         , control_file.version())
     dsc_file = "%s.dsc" % name_version
     dsc_controlfile = DebianControlFile(dsc_file)
-    destination_dir = "%s/%s/%s" % (config['post_build_dir'],  release,  component)
+    destination_dir = "%s/%s/%s" % (options.output_dir,  release,  component)
     if not os.path.exists(destination_dir):
         os.makedirs(destination_dir, 0755)
     print "Building: %s" % dsc_file
@@ -260,6 +260,13 @@ def main():
     parser.add_option("-q", "--quiet",
         action="store_false", dest="verbose", default=True,
         help="don't print status messages to stdout")
+    parser.add_option("-i", "--input-dir",
+        action="store", dest="input_dir", default='/build/pre_build',
+        help="Input directory that will contain the *_source.changes files")
+    parser.add_option("-o", "--output-dir",
+        action="store", dest="output_dir", default='/build/post_build',
+        help="Output directory")            
+        
     (options, args) = parser.parse_args()
     Log.verbose=options.verbose
     try:

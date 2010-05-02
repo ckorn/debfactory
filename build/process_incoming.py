@@ -24,7 +24,7 @@
   When *_source.changes is found, it's contents are verified and
   the files are moved to the pre_build queue.
   
-  The expected structure is ftp_incoming_dir/release/component 
+  The expected structure is input_dir/ftp_incoming_dirrelease/component 
     eg: /home/ftp/incoming/jaunty/apps
   
   Files will be verified with the following rules
@@ -54,8 +54,7 @@ config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
 config = ConfigObj(config_file)
 
 # Check for required configuration
-check_config(config,
-             ['sender_email', 'ftp_incoming_dir', 'pre_build_dir'])
+check_config(config, ['sender_email'])
 
 # Clean up all files older than 24h
 CLEANUP_TIME = 24*3600
@@ -72,9 +71,10 @@ def check_source_changes(release, component, filename):
     Log.print_("Checking %s/%s/%s" % (release, component, filename))
 
     source_dir = "%s/%s/%s" \
-        % (config['ftp_incoming_dir'], release, component)
+        % (options.input_dir, release, component)
+        
     full_pre_build_dir = "%s/%s/%s" \
-        % (config['pre_build_dir'], release, component)
+        % (options.output_dir, release, component)
     changes_file = "%s/%s" % (source_dir, filename)
 
     if not os.path.exists(full_pre_build_dir):
@@ -174,8 +174,8 @@ def check_incoming_dir():
     """
     Check the ftp incoming directory for release directories
     """
-    global config
-    file_list = glob.glob("%s/*" % (config['ftp_incoming_dir']))
+    global options
+    file_list = glob.glob("%s/*" % options.input_dir)
     for file in file_list:
         if os.path.isdir(file):
             release = os.path.basename(file)
@@ -185,9 +185,9 @@ def check_release_dir(release):
     """
     Check a release directory for components
     """
-    global config
+    global options
     file_list = glob.glob("%s/%s/*" \
-        % (config['ftp_incoming_dir'], release))
+        % (options.input_dir, release))
     for file in file_list:
         if os.path.isdir(file):
             component = os.path.basename(file)
@@ -200,10 +200,9 @@ def check_release_component_dir(release, component):
     	files older than CLEANUP_TIME will be removed
     """
     global options
-    global config
     Log.log("Checking %s/%s" % (release, component))
     file_list = glob.glob("%s/%s/%s/*" \
-        % (config['ftp_incoming_dir'], release, component))
+        % (options.input_dir, release, component))
 
     for fname in file_list:
         if not os.path.exists(fname): # File was removed ???
@@ -232,11 +231,17 @@ def main():
     parser.add_option("-q", "--quiet",
         action="store_false", dest="verbose", default=True,
         help="Do not print status messages to stdout")
+    parser.add_option("-i", "--input-dir",
+        action="store", dest="input_dir", default='/home/ftp/incoming',
+        help="Input directory that will contain the *_source.changes files")
+    parser.add_option("-o", "--output-dir",
+        action="store", dest="output_dir", default='/build/pre_build',
+        help="Output directory")            
     (options, args) = parser.parse_args()
     Log.verbose = options.verbose
     check_only = options.check_only
     try:
-        lock = LockFile("ftp_incoming")
+        lock = LockFile("process_incoming")
     except LockFile.AlreadyLockedError:
         Log.log("Unable to acquire lock, exiting")
         return

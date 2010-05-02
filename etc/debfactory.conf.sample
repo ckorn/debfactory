@@ -4,18 +4,6 @@
 # mails
 sender_email = GetDeb Automated Builder <autobuild@getdeb.net>
 
-# FTP incoming directory
-ftp_incoming_dir = /home/ftp/incoming
-
-# PRE build directory
-pre_build_dir = /build/pre_build
-
-# POST build directory
-post_build_dir = /build/post_build
-
-# pool directory
-pool_dir = /archive/getdeb/ubuntu
-
 # repository managment commands 
 rep_commands_dir = /build/rep_commands
 

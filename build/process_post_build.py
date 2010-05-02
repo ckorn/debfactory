@@ -50,7 +50,7 @@ config_file = "%s/debfactory/etc/debfactory.conf" % os.environ['HOME']
 config = ConfigObj(config_file)
 
 # Check for required configuration
-check_config(config, ['sender_email', 'post_build_dir', 'pool_dir'])
+check_config(config, ['sender_email'])
 
 Log = Logger()
 
@@ -60,7 +60,7 @@ def extract_changelog(changes_file, component):
     If handling a _source.changes, extract the real changelog
     If handling binary .changes just creat a link for each of the binaries
     """
-    global config
+    global config, options
 
     extract_dir = '/tmp/changelog_extract'
     control_file = DebianControlFile(changes_file)
@@ -71,7 +71,7 @@ def extract_changelog(changes_file, component):
     else:
         prefix = name[0]
 
-    pool_dir = join(config['pool_dir'], 'pool', \
+    pool_dir = join(options.output_dir, 'pool', \
                                  component, prefix, name)
     dirname = os.path.dirname(changes_file)
     if changes_file.endswith('_source.changes'): # Really extract
@@ -109,9 +109,9 @@ def check_changes(release, component, filename):
     """
     Check a _.changes file and include it into the repository
     """
-    global config
+    global config, options
     source_dir = "%s/%s/%s" \
-        % (config['post_build_dir'], release, component)
+        % (options.input_dir, release, component)
     changes_file = "%s/%s" % (source_dir, filename)
     if not os.path.exists(changes_file):
         return 1
@@ -154,7 +154,7 @@ def check_changes(release, component, filename):
         else:
             prefix = name[0]
 
-        pool_dir = join(config['pool_dir'], 'pool', \
+        pool_dir = join(options.output_dir, 'pool', \
                         component, prefix, name)
         changelogs = glob.glob("%s/*.changelog" % (pool_dir))
         for changelog in changelogs:
@@ -185,9 +185,9 @@ def check_post_build_dir():
     """
     Check the ftp incoming directory for release directories
     """
-    global config
+    global options
     file_list = glob.glob("%s/*" \
-        % (config['post_build_dir']))
+        % (options.input_dir))
     for file in file_list:
         if os.path.isdir(file):
             release = os.path.basename(file)
@@ -197,9 +197,9 @@ def check_release_dir(release):
     """
     Check a release directory for components
     """
-    global config
+    global options
     file_list = glob.glob("%s/%s/*" \
-        % (config['post_build_dir'], release))
+        % (options.input_dir, release))
     for file in file_list:
         if os.path.isdir(file):
             component = os.path.basename(file)
@@ -210,10 +210,10 @@ def check_release_component_dir(release, component):
     Check a release/component directory, first process _source.changes
     then process the corresponding _i386 and _amd64 changes
     """
-    global config
+    global options
     Log.log("Checking %s/%s" % (release, component))
     file_list = glob.glob("%s/%s/%s/*_source.changes" \
-        % (config['post_build_dir'], release, component))
+        % (options.input_dir, release, component))
 
     # First we process _source.changes 
     # If the import is successful we then import the corresponding binary packages
@@ -229,10 +229,17 @@ def check_release_component_dir(release, component):
     Log.log("Done")
 
 def main():
+    global options
     parser = OptionParser()
     parser.add_option("-q", "--quiet",
         action="store_false", dest="verbose", default=True,
         help="don't print status messages to stdout")
+    parser.add_option("-i", "--input-dir",
+        action="store", dest="input_dir", default='/build/post_build',
+        help="Input directory that will contain the *_source.changes files")
+    parser.add_option("-o", "--output-dir",
+        action="store", dest="output_dir", default='/archive/getdeb/ubuntu',
+        help="Output directory")       
     (options, args) = parser.parse_args()
     Log.verbose=options.verbose
     try:

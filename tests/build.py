@@ -48,7 +48,9 @@ if len(sys.argv) > 1:
     
 release = commands.getoutput('lsb_release -cs')
 run_dir = os.getcwd()
-os.chdir('/tmp')
+if not os.path.isdir('/tmp/build_test'):
+    os.mkdir('/tmp/build_test')
+os.chdir('/tmp/build_test')
 
 dsc_file = os.path.basename(dsc_url)
 
@@ -57,14 +59,16 @@ run_or_exit('dget -ux '+dsc_url)
 debian_control = DebianControlFile(dsc_file)
 upstream_version = debian_control.upstream_version()
 package_name = debian_control['Source']
-os.chdir(join('/tmp/', '%s-%s' % (package_name, upstream_version)))
+os.chdir(join('/tmp/build_test', '%s-%s' % (package_name, upstream_version)))
 run_or_exit('dch -D %s Testing package' % release)
 run_or_exit('debuild -S -sa -uc')
-changes_control = DebianControlFile('/tmp/%s_%s_source.changes' % (package_name, debian_control.version()))
-changes_control.move('/home/ftp/incoming/%s/%s' % (release, component), '/tmp')
+changes_control = DebianControlFile('/tmp/build_test/%s_%s_source.changes' % (package_name, debian_control.version()))
+if not os.path.exists('/tmp/build_incoming/'+release+'/apps'):
+    os.makedirs('/tmp/build_incoming/'+release+'/apps')
+changes_control.move('/tmp/build_incoming/'+release+'/apps', '/tmp/build_test/')
 os.chdir(run_dir)
 
 # Test the process
-run_or_exit('build/process_incoming.py --skip-gpg-check')
-run_or_exit('build/process_pre_build.py --skip-gpg-check')
-run_or_exit('build/process_post_build.py')
+run_or_exit('build/process_incoming.py --skip-gpg-check -i /tmp/build_incoming -o /tmp/pre_build')
+run_or_exit('build/process_pre_build.py --skip-gpg-check -i /tmp/pre_build -o /tmp/post_build')
+run_or_exit('build/process_post_build.py -i /tmp/post_build')
