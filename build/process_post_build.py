@@ -144,18 +144,20 @@ def check_changes(release, component, filename):
         report_msg += "%s (%s) MD5: %s \n" \
             % (file_info.name, file_info.size, file_info.md5sum)
 
+    if name.startswith('lib'):
+        prefix = name[:4]
+    else:
+        prefix = name[0]
+
+    pool_dir = join(options.output_dir, 'pool', \
+                    component, prefix, name)
+    file_on_dest = "%s/%s" % ( pool_dir, filename )
+
     # Remove all packages related to source package
     if(filename.endswith("_source.changes")):
         os.system("reprepro removesrc %s-getdeb-testing %s %s"
             % (release, name,  control_file['Version']))
         # Delete orphaned changelogs
-        if name.startswith('lib'):
-            prefix = name[:4]
-        else:
-            prefix = name[0]
-
-        pool_dir = join(options.output_dir, 'pool', \
-                        component, prefix, name)
         changelogs = glob.glob("%s/*.changelog" % (pool_dir))
         for changelog in changelogs:
             deb = changelog.rsplit('.', 1)[0]+'.deb'
@@ -169,7 +171,7 @@ def check_changes(release, component, filename):
     print output
     report_msg += output
     if rc == 0:
-        extract_changelog(changes_file, component)
+        extract_changelog(file_on_dest, component)
         status = "SUCCESSFUL"
         control_file.remove()
     else:
