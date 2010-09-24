@@ -54,7 +54,7 @@ check_config(config, ['sender_email'])
 
 Log = Logger()
 
-def extract_changelog(changes_file, component):
+def extract_changelog(changes_file, component, pool_dir):
     """ 
     Extract the changelog according to the changes_file
     If handling a _source.changes, extract the real changelog
@@ -80,7 +80,7 @@ def extract_changelog(changes_file, component):
         for file in control_file.files_list():
             if file.name.endswith('.dsc'):
                 (rc, output) = commands.getstatusoutput('dpkg-source -x %s %s' % \
-                          (join(dirname, file.name), extract_dir))
+                          (join(pool_dir, file.name), extract_dir))
                 if rc <> 0 or not os.path.isdir(extract_dir):
                     Log.print_(output)
                     Log.print_("Unable to extract source to retrieve changelog")
@@ -171,7 +171,7 @@ def check_changes(release, component, filename):
     print output
     report_msg += output
     if rc == 0:
-        extract_changelog(file_on_dest, component)
+        extract_changelog(changes_file, component, pool_dir)
         status = "SUCCESSFUL"
         control_file.remove()
     else:
