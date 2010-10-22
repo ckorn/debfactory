@@ -52,12 +52,20 @@ class RevuKeyUpdater:
         "Parses fingerprints from the RDF."
  		# We got our user; now query launchpad and retrieve their GPG keys
         g = Graph()
-        g.parse('https://launchpad.net/people/%s/+rdf' % self.lpgroup)
-        results = g.query("SELECT ?fingerprint WHERE { ?any wot:fingerprint ?fingerprint . }", 
-             initNs=dict( wot=Namespace("http://xmlns.com/wot/0.1/")))       
+        g.parse('https://staging.launchpad.net/people/%s/+rdf' % self.lpgroup)
+        results = g.query("SELECT ?member WHERE { ?any foaf:member ?member . }",
+             initNs=dict( foaf=Namespace("http://xmlns.com/foaf/0.1/")))
 
         for statement in results:
-            self.fingerprints.append(statement[0])
+            print statement[0]
+            g2 = Graph()
+            g2.parse('https://staging.launchpad.net/%s' % statement[0])
+            results2 = g2.query("SELECT ?fingerprint WHERE { ?any wot:fingerprint ?fingerprint . }", 
+                 initNs=dict( wot=Namespace("http://xmlns.com/wot/0.1/")))
+            for statement2 in results2:
+                print statement2[0]
+                self.fingerprints.append(statement2[0])
+            print
     
     def do_update(self):
         "Handles calling GPG for all found fingerprints."
@@ -65,6 +73,7 @@ class RevuKeyUpdater:
         for fingerprint in self.fingerprints:
             # get the keyid from the fingerprint
             key = fingerprint[-8:]
+            print key
             os.system("gpg %s --recv-key %s" % (self.gpgopts, key))
 
     def add_fingerprint(self, fingerprint):
