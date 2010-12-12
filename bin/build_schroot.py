@@ -216,7 +216,6 @@ def chroot_postinstall_update(chrootdir, release, arch):
     os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends upgrade")
     os.system("chroot "+chrootdir+" apt-get clean")
     os.system("du -sh "+chrootdir)
-    shutil.rmtree(chrootdir)
     schroot_conf = "\n"
     schroot_conf += "["+release+"-"+arch+"]"+"\n"
     schroot_conf += "type=directory\n"
