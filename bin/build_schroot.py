@@ -46,7 +46,7 @@ def command_line_parser():
 	parser = OptionParser()
 	parser.add_option("-c", "--chroot-base-dir",
 	    action = "store", type="string", dest="chroot_dir", \
-	    help = "Base directory to store the chroot image file", \
+	    help = "Base directory to install the chroot directory into", \
 	    default = '', \
 	    )                        
 	parser.add_option("-d", "--dist", \
@@ -100,8 +100,8 @@ def check_create_dir(name):
 		os.mkdir(name)
 
 def copy_to_chroot(fname, chrootdir):
-	print "/"+fname+" -> "+os.path.join(chrootdir,fname)
-	shutil.copyfile("/"+fname, os.path.join(chrootdir,fname))
+	print "/"+fname+" -> "+os.path.join(chrootdir, fname)
+	shutil.copyfile("/"+fname, os.path.join(chrootdir, fname))
 
 # Check requirements
 def check_requirements():
@@ -215,15 +215,13 @@ def chroot_postinstall_update(chrootdir, release, arch):
     os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends install build-essential")
     os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends upgrade")
     os.system("chroot "+chrootdir+" apt-get clean")
-    print "Creating the schroot image "+chrootdir+".tar.gz, please be patient..."
-    os.system("tar -C "+chrootdir+" -czf "+chrootdir+".tar.gz .")
-    os.system("du -sh "+chrootdir+".tar.gz")
+    os.system("du -sh "+chrootdir)
     shutil.rmtree(chrootdir)
-    # TODO: Create a config file at /etc/schroot/chroot.d/ instead    
     schroot_conf = "\n"
     schroot_conf += "["+release+"-"+arch+"]"+"\n"
-    schroot_conf += "type=file\n"
-    schroot_conf += "file="+chrootdir+".tar.gz\n"
+    schroot_conf += "type=directory\n"
+    schroot_conf += "directory="+chrootdir+"\n"
+    schroot_conf += "union-type=aufs\n"
     schroot_conf += "groups=admin\n"
     if options.sbuild == 1:
     	schroot_conf += "root-groups=sbuild\n"
