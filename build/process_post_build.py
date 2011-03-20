@@ -164,8 +164,9 @@ def check_changes(release, component, filename):
             if not os.path.exists(deb):
                 Log.print_("Removing changelog: %s" % (changelog))
                 os.unlink(changelog)
-    # Include the package
-    command = "reprepro -P normal --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
+    # Include the package (use standard as "normal" does not exist due to Debian policy)
+    # (LP: #735381, #735428)
+    command = "reprepro -P standard --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
         % (component,  release, changes_file)
     (rc, output) = commands.getstatusoutput(command)
     print output
