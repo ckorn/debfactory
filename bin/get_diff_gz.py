@@ -4,6 +4,17 @@ import os
 import sys
 from httplib import HTTPConnection
 import re
+from subprocess import Popen, PIPE
+
+MIRROR_URL = "188.138.90.189"
+GETDEB_SUBDIR = ""
+
+# If the package does not start with lib it is
+# the first character. Else it is lib and the first character.
+def get_package_subdir(orig):
+	if orig.startswith('lib'):
+		return orig[0:4]
+	return orig[0]
 
 def download(p,d):
 	tmp = glob.glob('./' + p + '*.diff.gz')
@@ -15,40 +26,16 @@ def get_base_package_name():
 	tmp = glob.glob('./*.orig.tar.gz')
 	if not tmp:
 		tmp = glob.glob('./*.orig.tar.bz2')
+	if not tmp:
+		tmp = glob.glob('./*.orig.tar.xz')
 	if not tmp: return None
 	return os.path.basename(tmp[0])
 
-def search_on_getdeb(orig_file, release):
-	http_connection = HTTPConnection('mirror.informatik.uni-mannheim.de')
-	download_dir = 'http://mirror.informatik.uni-mannheim.de/pub/mirrors/getdeb/ubuntu/' + release + '/' + orig_file[0:2] + '/'
-	http_connection.request('GET', download_dir)
-	http_response = http_connection.getresponse()
-	if http_response.status != 200: return None
-	data = http_response.read()
-	http_connection.close()
-	data = data.split('\n')
+def search_on_getdeb(orig_file):
+	global MIRROR_URL, GETDEB_SUBDIR
+	http_connection = HTTPConnection(MIRROR_URL)
 	basename = orig_file.split('_')[0]
-	package_lines = list()
-	for line in data:
-		if basename in line:
-			package_lines.append(line)
-	if len(package_lines) == 0: return None
-	p_d = list()
-	package_re = re.compile('<a .*?>(?P<orig>.*?)\.diff\.gz<')
-	download_re = re.compile('<a href="(?P<download>.*?)">')
-	for line in package_lines:
-		search_result = re.search(package_re, line)
-		if not search_result: continue
-		orig = search_result.group('orig') 
-		search_result = re.search(download_re, line)
-		download = download_dir + search_result.group('download')
-		p_d.append((orig,download))
-	return p_d
-
-def search_on_getdeb2(orig_file, release):
-	http_connection = HTTPConnection('mirror.informatik.uni-mannheim.de')
-	basename = orig_file.split('_')[0]
-	download_dir = 'http://mirror.informatik.uni-mannheim.de/pub/mirrors/getdeb/ubuntu/pool/apps/' + orig_file[0] + \
+	download_dir = 'http://' + MIRROR_URL + '/' + GETDEB_SUBDIR + '/ubuntu/pool/apps/' + get_package_subdir(orig_file) + \
 	  '/' + basename + '/'
 	http_connection.request('GET', download_dir)
 	http_response = http_connection.getresponse()
@@ -73,10 +60,11 @@ def search_on_getdeb2(orig_file, release):
 		p_d.append((orig,download))
 	return p_d
 
-def search_on_playdeb(orig_file, release):
-	http_connection = HTTPConnection('mirror.informatik.uni-mannheim.de')
+def search_on_playdeb(orig_file):
+	global MIRROR_URL, GETDEB_SUBDIR
+	http_connection = HTTPConnection(MIRROR_URL)
 	basename = orig_file.split('_')[0]
-	download_dir = 'http://mirror.informatik.uni-mannheim.de/pub/mirrors/getdeb/ubuntu/pool/games/' + orig_file[0] + \
+	download_dir = 'http://' + MIRROR_URL + '/' + GETDEB_SUBDIR + '/ubuntu/pool/games/' + get_package_subdir(orig_file) + \
 	  '/' + basename + '/'
 	http_connection.request('GET', download_dir)
 	http_response = http_connection.getresponse()
@@ -109,9 +97,12 @@ def applyDiff(p,orig):
 		if orig.endswith(".gz"):
 			print 'tar xzf ' + orig
 			os.system('tar xzf ' + orig)
-		else:
+		elif orig.endswith(".bz2"):
 			print 'tar xjf ' + orig
 			os.system('tar xjf ' + orig)
+		elif orig.endswith(".xz"):
+			print 'tar xJf ' + orig
+			os.system('tar xJf ' + orig)
 		if not os.path.exists(dir_name):
 			tmp = glob.glob('./' + package_name + '*')
 			for t in tmp:
@@ -119,12 +110,25 @@ def applyDiff(p,orig):
 					os.rename(t, dir_name)
 	if not os.path.exists(dir_name + '/debian'):
 		tmp = glob.glob(p + '*.diff.gz')
+
+		cwd = os.getcwd()
+		os.chdir(os.path.join(cwd, dir_name))
 		if tmp:
-			print 'cd ' + dir_name + ' ; zcat ../' + p + '*.diff.gz | patch -p1 ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"'
-			os.system('cd ' + dir_name + ' ; zcat ../' + p + '*.diff.gz | patch -p1 ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"')
+			print 'zcat ../' + p + '*.diff.gz | patch -p1'
+			os.system('zcat ../' + p + '*.diff.gz | patch -p1')
 		else:
-			print 'cd ' + dir_name + ' ; tar xzf ../' + p + '*.debian.tar.gz ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"'
-			os.system('cd ' + dir_name + ' ; tar xzf ../' + p + '*.debian.tar.gz ; dch -D lucid --newversion "'+version+'-1~getdeb1" "New upstream version"')
+			print 'tar xzf ../' + p + '*.debian.tar.gz'
+			os.system('tar xzf ../' + p + '*.debian.tar.gz')
+
+		# Take the same release as the previous/current changelog entry
+		p1 = Popen(["dpkg-parsechangelog"], stdout=PIPE)
+		p2 = Popen(["grep", "^Distribution:"], stdin=p1.stdout, stdout=PIPE)
+		p3 = Popen(["sed", "s/^Distribution: //"], stdin=p2.stdout, stdout=PIPE)
+		p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
+		release = p3.communicate()[0].strip("\r\n")
+
+		print 'dch -D ' + release + ' --newversion "'+version+'-1~getdeb1" "New upstream version"'
+		os.system('dch -D ' + release + ' --newversion "'+version+'-1~getdeb1" "New upstream version"')
 
 if __name__ == "__main__":
 	orig_file = get_base_package_name()
@@ -132,16 +136,10 @@ if __name__ == "__main__":
 		print "No orig.tar.gz file has been found."
 		sys.exit(1)
 
-	if len(sys.argv) == 2:
-		release = sys.argv[1]
-	else:
-		release = 'jaunty'
-
-	result = search_on_getdeb(orig_file, release) or []
-	result2 = search_on_playdeb(orig_file, release) or []
+	result = search_on_getdeb(orig_file) or []
+	result2 = search_on_playdeb(orig_file) or []
 	result.extend(result2)
-	result3 = search_on_getdeb2(orig_file, release) or []
-	result.extend(result3)
+
 	i = 0
 	for r in result:
 		p,d = r
