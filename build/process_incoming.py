@@ -61,6 +61,54 @@ CLEANUP_TIME = 24*3600
 
 Log = Logger()
 
+def check_incoming_dir():
+    """
+    Check the ftp incoming directory for release directories
+    """
+    global options
+    file_list = glob.glob("%s/*" % options.input_dir)
+    for file in file_list:
+        if os.path.isdir(file):
+            release = os.path.basename(file)
+            check_release_dir(release)
+
+def check_release_dir(release):
+    """
+    Check a release directory for components
+    """
+    global options
+    file_list = glob.glob("%s/%s/*" \
+        % (options.input_dir, release))
+    for file in file_list:
+        if os.path.isdir(file):
+            component = os.path.basename(file)
+            check_release_component_dir(release, component)
+
+def check_release_component_dir(release, component):
+    """ 
+    Check a release/component directory
+    	*_source.changes will triger a verification/move action
+    	files older than CLEANUP_TIME will be removed
+    """
+    global options
+    Log.log("Checking %s/%s" % (release, component))
+    file_list = glob.glob("%s/%s/%s/*" \
+        % (options.input_dir, release, component))
+
+    for fname in file_list:
+        if not os.path.exists(fname): # File was removed ???
+            continue
+        if fname.endswith("_source.changes"):
+            check_source_changes(release, component, os.path.basename(fname))
+            # There could be an error, remove it anyway
+            if not options.check_only and os.path.exists(fname):
+                os.unlink(fname)
+        else:
+            if not options.check_only and time.time() - os.path.getmtime(fname) > CLEANUP_TIME:
+                print "Removing old file: %s" % fname
+                os.unlink(fname)
+    Log.log("Done")
+
 def check_source_changes(release, component, filename):
     """
     Check a _source.changes file and proceed as described in the script
@@ -169,54 +217,6 @@ def check_source_changes(release, component, filename):
             control_file.remove()
     Log.print_(report_title)
     send_mail(config['sender_email'], gpg_sign_author, report_title, report_msg)
-
-def check_incoming_dir():
-    """
-    Check the ftp incoming directory for release directories
-    """
-    global options
-    file_list = glob.glob("%s/*" % options.input_dir)
-    for file in file_list:
-        if os.path.isdir(file):
-            release = os.path.basename(file)
-            check_release_dir(release)
-
-def check_release_dir(release):
-    """
-    Check a release directory for components
-    """
-    global options
-    file_list = glob.glob("%s/%s/*" \
-        % (options.input_dir, release))
-    for file in file_list:
-        if os.path.isdir(file):
-            component = os.path.basename(file)
-            check_release_component_dir(release, component)
-
-def check_release_component_dir(release, component):
-    """ 
-    Check a release/component directory
-    	*_source.changes will triger a verification/move action
-    	files older than CLEANUP_TIME will be removed
-    """
-    global options
-    Log.log("Checking %s/%s" % (release, component))
-    file_list = glob.glob("%s/%s/%s/*" \
-        % (options.input_dir, release, component))
-
-    for fname in file_list:
-        if not os.path.exists(fname): # File was removed ???
-            continue
-        if fname.endswith("_source.changes"):
-            check_source_changes(release, component, os.path.basename(fname))
-            # There could be an error, remove it anyway
-            if not options.check_only and os.path.exists(fname):
-                os.unlink(fname)
-        else:
-            if not options.check_only and time.time() - os.path.getmtime(fname) > CLEANUP_TIME:
-                print "Removing old file: %s" % fname
-                os.unlink(fname)
-    Log.log("Done")
 
 def main():
     global options
