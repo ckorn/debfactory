@@ -25,6 +25,7 @@ import re
 import time
 import random
 import operator
+import cgi
 from threading import Thread
 from xml.dom import minidom
 
@@ -49,6 +50,7 @@ class testit(Thread):
 		rand = random.randint(0,9999999)
 		directory = self._source["Package"] + str(rand)
 		diff = "/tmp/"+directory+"/bla.diff.gz"
+		# Always name the file debian.tar.gz (Although it may be a debian.tar.bz2)
 		debianTarGz = "/tmp/"+directory+"/"+directory+"/debian.tar.gz"
 		xmlfile = "/tmp/"+directory+"/dehs.xml"
 
@@ -70,8 +72,12 @@ class testit(Thread):
 			self.exe("cd /tmp/"+directory+" ; mkdir "+directory)
 			self.exe("cd /tmp/"+directory+"/"+directory+" ; filterdiff -z -i\"*/debian/*\" "+diff+" | patch -f -s -p1 2>&1 > /dev/null")
 		else:
+			if self._source["patch"][1].endswith("debian.tar.bz2"):
+				extractFlag = 'j'
+			else:
+				extractFlag = 'z'
 			self.exe("cd /tmp/"+directory+" ; mkdir "+directory)
-			self.exe("cd /tmp/"+directory+"/"+directory+" ; wget -q -O "+debianTarGz+" "+archiveUrl+self._source["Directory"]+"/"+self._source["patch"][1] + " ; tar xzf " + debianTarGz)
+			self.exe("cd /tmp/"+directory+"/"+directory+" ; wget -q -O "+debianTarGz+" "+archiveUrl+self._source["Directory"]+"/"+self._source["patch"][1] + " ; tar x"+extractFlag+"f " + debianTarGz)
 			p = os.popen("cd /tmp/"+directory+"/"+directory+" ; ls debian/watch 2>/dev/null")
 			watch = p.readline().strip('\r\n')
 			p.close()
@@ -168,10 +174,14 @@ if __name__ == "__main__":
 			if filename.endswith("tar.gz"): source["tar.gz"] = (md5sum, filename)
 			if filename.endswith("diff.gz"): source["patch"] = (md5sum, filename)
 			if filename.endswith("debian.tar.gz"): source["patch"] = (md5sum, filename)
+			if filename.endswith("debian.tar.bz2"): source["patch"] = (md5sum, filename)
 			if filename.endswith("dsc"): source["dsc"] = (md5sum, filename)
 		if infiles and line.find(":") != -1: infiles = False
 
 	sources.close()
+
+	if os.path.isfile("/tmp/Sources.gz"): os.remove("/tmp/Sources.gz")
+	if os.path.isfile("/tmp/Sources"): os.remove("/tmp/Sources")
 
 	for source in data:
 		if len(threads) < numberOfThreads:
@@ -226,7 +236,7 @@ if __name__ == "__main__":
 		html.write("<tr>")
 		html.write("    <td>"+source["Package"]+" <a href=\""+archiveUrl+source["Directory"]+"/"+source["patch"][1]+"\">patch</a> <a href=\""+archiveUrl+source["Directory"]+"/"+source["dsc"][1]+"\">dsc</a></td>")
 		html.write("    <td>"+source["DebianUVersion"]+" ("+source["DebianMangledUVersion"]+")</td>")
-		html.write("    <td><a href=\""+source["UpstreamURL"]+"\">"+source["UpstreamVersion"]+"</a></td>")
+		html.write("    <td><a href=\""+cgi.escape(source["UpstreamURL"])+"\">"+source["UpstreamVersion"]+"</a></td>")
 		html.write("</tr>\n")
 	html.write("</table>")
 
@@ -257,7 +267,7 @@ if __name__ == "__main__":
 		html.write("<tr>")
 		html.write("    <td>"+source["Package"]+" <a href=\""+archiveUrl+source["Directory"]+"/"+source["patch"][1]+"\">patch</a> <a href=\""+archiveUrl+source["Directory"]+"/"+source["dsc"][1]+"\">dsc</a></td>")
 		html.write("    <td>"+source["DebianUVersion"]+" ("+source["DebianMangledUVersion"]+")</td>")
-		html.write("    <td><a href=\""+source["UpstreamURL"]+"\">"+source["UpstreamVersion"]+"</a></td>")
+		html.write("    <td><a href=\""+cgi.escape(source["UpstreamURL"])+"\">"+source["UpstreamVersion"]+"</a></td>")
 		html.write("</tr>\n")
 	html.write("</table>")
 
