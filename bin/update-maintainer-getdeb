@@ -32,7 +32,6 @@
 import os
 import re
 import sys
-import ubuntutools.packages
 
 valid_locations = ["debian/control.in", "control.in", "debian/control", "control"]
 control_file_found = False
