@@ -91,7 +91,8 @@ if __name__ == "__main__":
 
 	credentials = Credentials()
 	credentials.load(open(launchpad_key))
-	launchpad = Launchpad(credentials, EDGE_SERVICE_ROOT, cachedir)
+	#launchpad = Launchpad(credentials, EDGE_SERVICE_ROOT, cachedir)
+	launchpad = Launchpad.login_with('GetDeb.net Bug Manager', 'production')
 
 	me = launchpad.me
 
