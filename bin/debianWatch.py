@@ -16,7 +16,7 @@ if __name__ == "__main__":
 	new_version = version + str(tmp)
 
 	os.system("dch -v \"" + new_version + "\" \"Added debian/watch file\"")
-	os.system("sed -i 's/Standards-Version: .*/Standards-Version: 3\.8\.4/g' debian/control")
+	os.system("sed -i 's/Standards-Version: .*/Standards-Version: 3\.9\.1/g' debian/control")
 	f = open("debian/watch", "w+")
 	f.write("version=3\n")
 	f.close()
