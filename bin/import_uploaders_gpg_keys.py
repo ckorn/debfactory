@@ -52,14 +52,14 @@ class RevuKeyUpdater:
         "Parses fingerprints from the RDF."
  		# We got our user; now query launchpad and retrieve their GPG keys
         g = Graph()
-        g.parse('https://staging.launchpad.net/people/%s/+rdf' % self.lpgroup)
+        g.parse('https://launchpad.net/people/%s/+rdf' % self.lpgroup)
         results = g.query("SELECT ?member WHERE { ?any foaf:member ?member . }",
              initNs=dict( foaf=Namespace("http://xmlns.com/foaf/0.1/")))
 
         for statement in results:
             print statement[0]
             g2 = Graph()
-            g2.parse('https://staging.launchpad.net/%s' % statement[0])
+            g2.parse('https://launchpad.net/%s' % statement[0])
             results2 = g2.query("SELECT ?fingerprint WHERE { ?any wot:fingerprint ?fingerprint . }", 
                  initNs=dict( wot=Namespace("http://xmlns.com/wot/0.1/")))
             for statement2 in results2:
