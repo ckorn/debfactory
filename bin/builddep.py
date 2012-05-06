@@ -33,7 +33,7 @@ def getUniqHeadersInFiles(files):
   for file in files:
     f = open(file, 'r')
     for line in f.readlines():
-      if line[0:8]=="#include":
+      if line[0:8]=="#include" or line.startswith("# include"):
         if line.find("<") != -1 and line.find(">") != -1 and line[9] != '"':
           dummy, header = line.split("<", 1)
           header, dummy = header.split(">", 1)
