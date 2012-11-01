@@ -216,12 +216,12 @@ def chroot_postinstall_update(chrootdir, release, arch):
     os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends upgrade")
     os.system("chroot "+chrootdir+" apt-get clean")
     os.system("du -sh "+chrootdir)
-    schroot_conf = "\n"
+    schroot_conf = ""
     schroot_conf += "["+release+"-"+arch+"]"+"\n"
     schroot_conf += "type=directory\n"
     schroot_conf += "directory="+chrootdir+"\n"
     schroot_conf += "union-type=aufs\n"
-    schroot_conf += "groups=admin\n"
+    schroot_conf += "groups=lpadmin\n"
     if options.sbuild == 1:
     	schroot_conf += "root-groups=sbuild\n"
     if arch=="i386":
