@@ -5,6 +5,8 @@ import sys
 from httplib import HTTPConnection
 import re
 from subprocess import Popen, PIPE
+import commands
+from functools import cmp_to_key
 
 MIRROR_URL = "188.138.90.189"
 GETDEB_SUBDIR = ""
@@ -130,6 +132,15 @@ def applyDiff(p,orig):
 		print 'dch -D ' + release + ' --newversion "'+version+'-1~getdeb1" "New upstream version"'
 		os.system('dch -D ' + release + ' --newversion "'+version+'-1~getdeb1" "New upstream version"')
 
+def diffVersionCompare(a,b):
+	v1 = a[0].split("_")[1]
+	v2 = b[0].split("_")[1]
+	com="dpkg --compare-versions '%s' lt '%s' "%(v1,v2)
+	if v1==v2: return 0
+	(rc, output) = commands.getstatusoutput(com)
+	if rc == 0: return -1
+	return 1
+
 if __name__ == "__main__":
 	orig_file = get_base_package_name()
 	if not orig_file:
@@ -139,6 +150,8 @@ if __name__ == "__main__":
 	result = search_on_getdeb(orig_file) or []
 	result2 = search_on_playdeb(orig_file) or []
 	result.extend(result2)
+
+	result.sort(key=cmp_to_key(diffVersionCompare))
 
 	i = 0
 	for r in result:
