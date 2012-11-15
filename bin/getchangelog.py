@@ -39,18 +39,21 @@ if not os.path.exists(c):
 releases=["precise", "quantal"]
 
 """
-lyx (2.0.5-1~getdeb1) precise; urgency=low
+the-powder-toy (84.2-1~getdeb1) precise; urgency=low
 
   * New upstream version
+    Fixed: VIBR Fixes
+    Fixed: Spelling errors in game UI
+    Fixed: Make SC_SENSOR available in Lua API
 
- -- Christoph Korn <christoph.korn@getdeb.net>  Wed, 14 Nov 2012 21:44:51 +0100
+ -- Christoph Korn <christoph.korn@getdeb.net>  Thu, 15 Nov 2012 20:27:05 +0100
 """
 
 f=open(c)
 lines=f.read().split("\n")
 f.close()
 
-matcher=re.compile("^(?P<name>[\w]+) \((?P<version>[^)]+)\) (?P<release>[a-zA-Z]+); urgency=(?P<urgency>.+)$")
+matcher=re.compile("^(?P<name>[a-zA-Z0-9-]+) \((?P<version>[^)]+)\) (?P<release>[a-zA-Z]+); urgency=(?P<urgency>.+)$")
 # we save the indexes in "lines" where the message starts and ends
 start=2
 end=2
