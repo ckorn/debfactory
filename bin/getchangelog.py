@@ -53,7 +53,7 @@ f=open(c)
 lines=f.read().split("\n")
 f.close()
 
-matcher=re.compile("^(?P<name>[a-zA-Z0-9-]+) \((?P<version>[^)]+)\) (?P<release>[a-zA-Z]+); urgency=(?P<urgency>.+)$")
+matcher=re.compile("^(?P<name>[a-zA-Z0-9-+]+) \((?P<version>[^)]+)\) (?P<release>[a-zA-Z]+); urgency=(?P<urgency>.+)$")
 # we save the indexes in "lines" where the message starts and ends
 start=2
 end=2
