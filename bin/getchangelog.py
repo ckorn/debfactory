@@ -28,6 +28,7 @@ group.add_argument("-m", "--message", action="store_true", help="Create output f
 group = parser.add_argument_group()
 group.add_argument("-s", "--show", action="store_true", help="Show the created file in a text editor")
 group.add_argument("-o", "--output", metavar="file", help="The output will be written to this file. If not given it is written to stdout")
+group.add_argument("-d", "--description", action="store_true", help="Add a description in the output. Will be read from control file in same directory.")
 parser.add_argument("changelog", help="path to debian/changelog file")
 args = parser.parse_args()
 
@@ -78,10 +79,33 @@ msg="\n".join(msg)
 output=""
 # create output for Google+
 if args.google:
+	description=""
+	if args.description:
+		control=c.replace("changelog", "control")
+		if not os.path.exists(control):
+			print >> sys.stderr, "'%s' does not exist"%(control)
+			sys.exit()
+		f=open(control)
+		lines=f.read().split("\n")
+		f.close()
+
+		package_found = False
+		matcher=re.compile("^Package: (?P<package>[a-zA-Z0-9-+.]+)$")
+		matcher2=re.compile("^Description: (?P<description>.*)$")
+		for line in lines:
+			if package_found:
+				m2=matcher2.match(line)
+				if m2:
+					description="(%s)\n"%(m2.group("description"))
+					break
+			m2=matcher.match(line)
+			if m2 and m2.group("package") == m.group("name"):
+				package_found = True
 	name=args.google.split("/")[-1].replace("%20", " ")
 	version=m.group("version").split(":")[-1].split("-")[0]
 	releases="+".join(releases)
 	output = "*%s %s (%s)*\n"%(name, version, releases)
+	output += description
 	output += "\n"
 	output += msg
 	output += "\n"
