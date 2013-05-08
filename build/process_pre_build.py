@@ -196,8 +196,8 @@ def sbuild_package(release, component, control_file, arch):
         if dsc_controlfile['Architecture'] == 'all':
             print "Skipping Architecture= 'all' "
             return 0
-    rc = os.system('sbuild -d %s -c %s-%s %s' % 
-        (release, release, arch_str, dsc_file))
+    rc = os.system('sbuild -d %s -c %s-%s --arch %s %s' % 
+        (release, release, arch_str, arch, dsc_file))
     log_link = "%s_%s.build" % (name_version, arch)
     if not os.path.exists(log_link):
         print "Unable to find build log symbolic link"
