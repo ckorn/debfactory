@@ -194,6 +194,19 @@ deb-src http://mirror/ubuntu release-security multiverse
     copy_to_chroot("etc/hosts", chrootdir);
     copy_to_chroot("etc/sudoers", chrootdir);
     os.system("echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
+    # Disable daemons in chroot:
+    # http://bazaar.launchpad.net/~ubuntu-dev/ubuntu-dev-tools/trunk/view/head:/mk-sbuild#L765
+    os.system("echo "+release+"."+arch+" > "+chrootdir+"/etc/debian_chroot")
+    os.system("echo '#!/bin/sh' > "+chrootdir+"/usr/sbin/policy-rc.d")
+    os.system("echo 'while true; do' >> "+chrootdir+"/usr/sbin/policy-rc.d")
+    os.system("echo '    case \"$1\" in' >> "+chrootdir+"/usr/sbin/policy-rc.d")
+    os.system("echo '      -*) shift ;;' >> "+chrootdir+"/usr/sbin/policy-rc.d")
+    os.system("echo '      makedev) exit 0;;' >> "+chrootdir+"/usr/sbin/policy-rc.d")
+    os.system("echo '      x11-common) exit 0;;' >> "+chrootdir+"/usr/sbin/policy-rc.d")
+    os.system("echo '      *) exit 101;;' >> "+chrootdir+"/usr/sbin/policy-rc.d")
+    os.system("echo '    esac' >> "+chrootdir+"/usr/sbin/policy-rc.d")
+    os.system("echo 'done' >> "+chrootdir+"/usr/sbin/policy-rc.d")
+    os.system("chmod a+x "+chrootdir+"/usr/sbin/policy-rc.d")
 
 def chroot_postinstall_update(chrootdir, release, arch):
     global options
