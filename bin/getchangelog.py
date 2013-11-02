@@ -37,7 +37,7 @@ if not os.path.exists(c):
 	print >> sys.stderr, "'%s' does not exist"%(c)
 	sys.exit()
 
-releases=["precise", "raring"]
+releases=["precise", "saucy"]
 
 """
 the-powder-toy (84.2-1~getdeb1) precise; urgency=low
