@@ -25,6 +25,7 @@ cat <<-EOF > $1
 	Categories=System; // Applications -> System Tools ->
 	Categories=Education; // Applications -> Education ->
 	Categories=Science; // Applications -> Science ->
+	Keywords=
 EOF
 
 gedit $1
