@@ -88,13 +88,19 @@ if __name__ == "__main__":
     # We need to write the changelog first to a temporary file in order to append
     # the exiting debian/changelog after it.
     f = open("debian/changelog.new", "w")
-    f.writelines(new_changelog)
 
     # TODO: find a way to append to the beginning of a file without having to create
     # a temporary file and writing the original file line by line to it.
     f2 = open("debian/changelog")
-    for line in f2.readlines():
+    for i, line in enumerate(f2.readlines()):
+        # take the first three lines from the original changelog.
+        # it should be:
+        # c++-gtk-utils (2.2.5-1~getdeb1) saucy; urgency=low
+        #
+        #   * New upstream version
         f.write(line)
+        if i == 2:
+            f.writelines(new_changelog)
     f2.close()
     f.close()
     shutil.move("debian/changelog.new", "debian/changelog")
