@@ -61,8 +61,8 @@ if __name__ == "__main__":
                 # there is one on the "left side" of the string with max. LINELENGTH chars
                 space_pos = line.rfind(" ", 0, LINELENGTH)
                 # in case we have no luck here we add a warning and continue
-                if space_pos == -1:
-                    new_changelog.append("WARNING: THE FOLLOWING LINE COULD NOT BE SHORTENED\n")
+                if (space_pos == -1) or (len(line[space_pos:]) >= LINELENGTH and space_pos == line.rfind(" ", 0, len(line))):
+                    print "WARNING: THE FOLLOWING LINE COULD NOT BE SHORTENED:\n%(line)s"%locals()
                     new_changelog.append("%s\n" % line)
                     break
                 left_line = line[:space_pos]
