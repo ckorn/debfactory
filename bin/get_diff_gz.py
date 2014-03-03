@@ -84,6 +84,13 @@ def topLevelName(files):
 					return None
 	return name
 
+def parseChangelogField(fieldname):
+	p1 = Popen(["dpkg-parsechangelog"], stdout=PIPE)
+	p2 = Popen(["grep", "^%(fieldname)s:"%locals()], stdin=p1.stdout, stdout=PIPE)
+	p3 = Popen(["sed", "s/^%(fieldname)s: //"%locals()], stdin=p2.stdout, stdout=PIPE)
+	p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
+	return p3.communicate()[0].strip("\r\n")
+
 def applyDiff(p,orig):
 	package_name = orig.split('_')[0]
 	version = orig.split('_')[1].split('.orig')[0]
@@ -127,14 +134,16 @@ def applyDiff(p,orig):
 			os.system('tar xzf ../' + p + '*.debian.tar.gz')
 
 		# Take the same release as the previous/current changelog entry
-		p1 = Popen(["dpkg-parsechangelog"], stdout=PIPE)
-		p2 = Popen(["grep", "^Distribution:"], stdin=p1.stdout, stdout=PIPE)
-		p3 = Popen(["sed", "s/^Distribution: //"], stdin=p2.stdout, stdout=PIPE)
-		p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
-		release = p3.communicate()[0].strip("\r\n")
+		release = parseChangelogField("Distribution")
+		pre_epoch = parseChangelogField("Version").split(':', 1)
+		if len(pre_epoch) > 1:
+			epoch = pre_epoch[0] + ":"
+		else:
+			epoch = ""
 
-		print 'dch -D ' + release + ' --newversion "'+version+'-1~getdeb1" "New upstream version"'
-		os.system('dch -D ' + release + ' --newversion "'+version+'-1~getdeb1" "New upstream version"')
+		s = 'dch -D %(release)s --newversion "%(epoch)s%(version)s-1~getdeb1" "New upstream version"'%locals()
+		print s
+		os.system(s)
 	else:
 		print "Warning! debian directory already exists. Not replacing."
 
