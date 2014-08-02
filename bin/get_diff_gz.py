@@ -7,6 +7,7 @@ import re
 from subprocess import Popen, PIPE
 import commands
 from functools import cmp_to_key
+import shutil
 
 MIRROR_URL = "188.138.90.189"
 GETDEB_SUBDIR = ""
@@ -121,31 +122,32 @@ def applyDiff(p,orig):
 		# all fine. top level dir exists and has correct name
 		else:
 			untar(tarType, orig)
-	if not os.path.exists(dir_name + '/debian'):
-		tmp = glob.glob(p + '*.diff.gz')
+	
+	if os.path.exists(dir_name + '/debian'):
+		shutil.rmtree(dir_name + '/debian')
+		print "Warning! debian directory already existed. Removed."
 
+	tmp = glob.glob(p + '*.diff.gz')
 
-		os.chdir(os.path.join(cwd, dir_name))
-		if tmp:
-			print 'zcat ../' + p + '*.diff.gz | patch -p1'
-			os.system('zcat ../' + p + '*.diff.gz | patch -p1')
-		else:
-			print 'tar xzf ../' + p + '*.debian.tar.gz'
-			os.system('tar xzf ../' + p + '*.debian.tar.gz')
-
-		# Take the same release as the previous/current changelog entry
-		release = parseChangelogField("Distribution")
-		pre_epoch = parseChangelogField("Version").split(':', 1)
-		if len(pre_epoch) > 1:
-			epoch = pre_epoch[0] + ":"
-		else:
-			epoch = ""
-
-		s = 'dch -D %(release)s --newversion "%(epoch)s%(version)s-1~getdeb1" "New upstream version"'%locals()
-		print s
-		os.system(s)
+	os.chdir(os.path.join(cwd, dir_name))
+	if tmp:
+		print 'zcat ../' + p + '*.diff.gz | patch -p1'
+		os.system('zcat ../' + p + '*.diff.gz | patch -p1')
 	else:
-		print "Warning! debian directory already exists. Not replacing."
+		print 'tar xzf ../' + p + '*.debian.tar.gz'
+		os.system('tar xzf ../' + p + '*.debian.tar.gz')
+
+	# Take the same release as the previous/current changelog entry
+	release = parseChangelogField("Distribution")
+	pre_epoch = parseChangelogField("Version").split(':', 1)
+	if len(pre_epoch) > 1:
+		epoch = pre_epoch[0] + ":"
+	else:
+		epoch = ""
+
+	s = 'dch -D %(release)s --newversion "%(epoch)s%(version)s-1~getdeb1" "New upstream version"'%locals()
+	print s
+	os.system(s)
 
 	os.chdir(cwd)
 
