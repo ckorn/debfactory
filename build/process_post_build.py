@@ -166,7 +166,9 @@ def check_changes(release, component, filename):
                 os.unlink(changelog)
     # Include the package (use standard as "normal" does not exist due to Debian policy)
     # (LP: #735381, #735428)
-    command = "reprepro -P standard --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
+    # Now use "optional" as priority because it fits even better to the Debian policy
+    # (LP: #1085565)
+    command = "reprepro -P optional --ignore=wrongdistribution -C %s include %s-getdeb-testing %s" \
         % (component,  release, changes_file)
     (rc, output) = commands.getstatusoutput(command)
     print output
