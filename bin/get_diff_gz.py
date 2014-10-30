@@ -52,7 +52,7 @@ def search_on_mirror(orig_file, section):
 			package_lines.append(line)
 	if len(package_lines) == 0: return None
 	p_d = list()
-	package_re = re.compile('<a .*?>(?P<orig>.*?)(?:\.diff\.gz|\.debian\.tar\.gz)<')
+	package_re = re.compile('<a .*?>(?P<orig>.*?)(?:\.diff\.gz|\.debian\.tar\.gz|\.debian\.tar\.bz2|\.debian\.tar\.xz)<')
 	download_re = re.compile('<a href="(?P<download>.*?)">')
 	for line in package_lines:
 		search_result = re.search(package_re, line)
@@ -129,13 +129,25 @@ def applyDiff(p,orig):
 
 	tmp = glob.glob(p + '*.diff.gz')
 
-	os.chdir(os.path.join(cwd, dir_name))
 	if tmp:
+		os.chdir(os.path.join(cwd, dir_name))
 		print 'zcat ../' + p + '*.diff.gz | patch -p1'
 		os.system('zcat ../' + p + '*.diff.gz | patch -p1')
 	else:
-		print 'tar xzf ../' + p + '*.debian.tar.gz'
-		os.system('tar xzf ../' + p + '*.debian.tar.gz')
+		tmp = glob.glob(p + '*.debian.tar.gz')
+		if tmp:
+			os.chdir(os.path.join(cwd, dir_name))
+			print 'tar xzf ../' + p + '*.debian.tar.gz'
+			os.system('tar xzf ../' + p + '*.debian.tar.gz')
+		else:
+			tmp = glob.glob(p + '*.debian.tar.bz2')
+			os.chdir(os.path.join(cwd, dir_name))
+			if tmp:
+				print 'tar xjf ../' + p + '*.debian.tar.bz2'
+				os.system('tar xjf ../' + p + '*.debian.tar.bz2')
+			else:
+				print 'tar xJf ../' + p + '*.debian.tar.xz'
+				os.system('tar xJf ../' + p + '*.debian.tar.xz')
 
 	# Take the same release as the previous/current changelog entry
 	release = parseChangelogField("Distribution")
