@@ -151,13 +151,15 @@ def applyDiff(p,orig):
 
 	# Take the same release as the previous/current changelog entry
 	release = parseChangelogField("Distribution")
-	pre_epoch = parseChangelogField("Version").split(':', 1)
+	version_revision = parseChangelogField("Version")
+	pre_epoch = version_revision.split(':', 1)
+	revision = version_revision.rsplit('-', 1)[-1]
 	if len(pre_epoch) > 1:
 		epoch = pre_epoch[0] + ":"
 	else:
 		epoch = ""
 
-	s = 'dch -D %(release)s --newversion "%(epoch)s%(version)s-1~getdeb1" "New upstream version"'%locals()
+	s = 'dch -D %(release)s --newversion "%(epoch)s%(version)s-%(revision)s" "New upstream version"'%locals()
 	print s
 	os.system(s)
 
