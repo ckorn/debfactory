@@ -163,6 +163,8 @@ def applyDiff(p,orig):
 	print s
 	os.system(s)
 
+	os.system("grep get-orig-source debian/rules >/dev/null && echo 'get-orig-source'")
+
 	os.chdir(cwd)
 
 def diffVersionCompare(a,b):
