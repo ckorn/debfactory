@@ -107,7 +107,8 @@ if args.google:
 	output = "*%s %s (%s)*\n"%(name, version, releases)
 	output += description
 	output += "\n"
-	output += msg
+	# add #twt tag for automatic twitter post (https://manageflitter.com/engage/sync)
+	output += msg + " #twt"
 	output += "\n"
 	output += "\n"
 	output += args.google
