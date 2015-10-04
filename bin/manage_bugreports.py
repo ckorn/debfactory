@@ -81,8 +81,10 @@ if __name__ == "__main__":
 	changelog = 'debian/changelog'
 
 	if not os.path.exists(changelog):
-		print "File "+changelog+" not found"
-		sys.exit(2)
+		changelog = "./changelog"
+		if not os.path.exists(changelog):
+			print "File "+changelog+" not found"
+			sys.exit(2)
 
 	home = os.environ['HOME']
 	cachedir = home + '/.launchpadlib/cache/'
