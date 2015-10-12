@@ -56,15 +56,17 @@ def search_on_mirror(basename, section):
             package_lines.append(line)
     if len(package_lines) == 0: return None
     p_d = list()
-    package_re = re.compile('<a .*?>(?P<orig>.*?)(?:\.diff\.gz|\.debian\.tar\.gz|\.debian\.tar\.bz2|\.debian\.tar\.xz)<')
+    package_re = re.compile('<a .*?>(?P<filename>(?P<orig>.*?)(?:\.diff\.gz|\.debian\.tar\.gz|\.debian\.tar\.bz2|\.debian\.tar\.xz))<')
     download_re = re.compile('<a href="(?P<download>.*?)">')
     for line in package_lines:
         search_result = re.search(package_re, line)
         if not search_result: continue
         orig = search_result.group('orig')
+        filename = search_result.group('filename')
         search_result = re.search(download_re, line)
         download = download_dir + search_result.group('download')
-        p_d.append((orig,download))
+        entry={ "shortname": orig, "filename": filename, "url": download }
+        p_d.append(entry)
     return p_d
 
 def untar(orig):
@@ -175,8 +177,8 @@ def applyDiff(p,orig):
     os.chdir(cwd)
 
 def diffVersionCompare(a,b):
-    v1 = a[0].split("_")[1]
-    v2 = b[0].split("_")[1]
+    v1 = a['shortname'].split("_")[1]
+    v2 = b['shortname'].split("_")[1]
     com="dpkg --compare-versions '%s' lt '%s' "%(v1,v2)
     if v1==v2: return 0
     (rc, output) = commands.getstatusoutput(com)
@@ -191,13 +193,16 @@ def get_mirror_results(basename):
     return result
 
 def choose_result(result):
-    for i, r in enumerate(result):
-        p,d = r
-        print i,p
+    for i, e in enumerate(result):
+        print i,e["shortname"]
 
     c = raw_input('Choose:')
-    p,d = result[int(c)]
-    return p,d
+    e = result[int(c)]
+    return e
+
+def choose_from_mirror(basename):
+    result=get_mirror_results(basename)
+    return choose_result(result)
 
 def clean_dir(directory):
     for d in os.listdir(directory):

@@ -14,8 +14,8 @@ if __name__ == "__main__":
     basename=os.path.split(os.getcwd())[1]
     with MakeTempDir() as tmp_dir:
         result=get_mirror_results(basename)
-        p,d=choose_result(result)
-        download(p,d,tmp_dir)
+        e=choose_result(result)
+        download(e['shortname'],e['url'],tmp_dir)
         apply_new_debian_dir(tmp_dir)
     exe('git add .')
     exe('git diff --staged')

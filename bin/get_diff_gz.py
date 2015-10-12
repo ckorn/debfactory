@@ -9,6 +9,6 @@ if __name__ == "__main__":
 		sys.exit(1)
 	basename = orig_file.split('_')[0]
 	result=get_mirror_results(basename)
-	p,d=choose_result(result)
-	download(p, d)
-	applyDiff(p, orig_file)
+	e=choose_result(result)
+	download(e['shortname'], e['url'])
+	applyDiff(e['shortname'], orig_file)
