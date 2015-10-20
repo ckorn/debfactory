@@ -20,6 +20,8 @@ import os
 import re
 import sys
 import commands
+from gi.repository import Gtk, Gdk
+from gi.repository import GObject
 
 parser = argparse.ArgumentParser(description="parses a debian/changelog file for a commit msg or Google+")
 group = parser.add_mutually_exclusive_group()
@@ -29,6 +31,7 @@ group = parser.add_argument_group()
 group.add_argument("-s", "--show", action="store_true", help="Show the created file in a text editor")
 group.add_argument("-o", "--output", metavar="file", help="The output will be written to this file. If not given it is written to stdout")
 group.add_argument("-d", "--description", action="store_true", help="Add a description in the output. Will be read from control file in same directory.")
+group.add_argument("-c", "--clipboard", action="store_true", help="Copy the output to the clipboard")
 parser.add_argument("changelog", help="path to debian/changelog file")
 args = parser.parse_args()
 
@@ -128,3 +131,9 @@ out.close()
 if args.show and args.output:
 	com="xdg-open %s"%(args.output)
 	commands.getstatusoutput(com)
+
+if args.clipboard:
+	clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+	clipboard.set_text(output, -1)
+	GObject.timeout_add(100, Gtk.main_quit)
+	Gtk.main()
