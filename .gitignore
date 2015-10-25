@@ -1,0 +1,13 @@
+keyrings/*
+.project
+.pydevproject
+etc/debfactory.conf
+.eric4project
+.eric4project/debfactory.e4q
+.eric4project/debfactory.e4t
+.eric4project/debfactory.e4q
+.eric4project/debfactory.e4t
+debfactory.e4p
+.settings
+.idea
+*.pyc
