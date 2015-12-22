@@ -1,10 +1,13 @@
 #!/usr/bin/python
 from common import *
 import shutil
-
+import sys
 
 if __name__ == "__main__":
-    basename=raw_input("Enter basename: ")
+    if len(sys.argv) == 1:
+        basename=raw_input("Enter basename: ")
+    else:
+        basename=sys.argv[1]
     e=choose_from_mirror(basename)
     download(e['shortname'], e['url'])
     untar(e['filename'])
