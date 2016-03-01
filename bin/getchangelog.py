@@ -22,6 +22,30 @@ import sys
 import commands
 from gi.repository import Gtk, Gdk
 from gi.repository import GObject
+import requests
+
+releases=[{"release" : "trusty", "date": "14.04" }, {"release": "wily", "date": "15.10" }]
+
+def get_releases(url):
+	r = requests.get(url)
+	t=r.text[r.text.find('Packages are available for the following releases'):]
+	t=t[:t.find('</p>')]
+	# Ubuntu 15.10: 1:2016.02.27-1~getdeb1<br/>
+	m=re.compile("Ubuntu (?P<date>[\d\.]+): (?P<version>\S+)")
+	matches=m.finditer(t)
+	releases=[ { "version": x.group("version"), "date": x.group("date") } for x in matches ]
+	for rel in releases:
+		v = rel["version"]
+		v = v[:v.find("<")]
+		rel["version"]=v.split(":")[-1].split("-")[0]
+	return releases
+
+def filter_releases(url, version):
+	global releases
+	rel=get_releases(url)
+	dates=[x["date"] for x in rel if x["version"] == version]
+	ret = [x["release"] for x in releases for y in rel if x["date"] == y["date"]]
+	return ret
 
 parser = argparse.ArgumentParser(description="parses a debian/changelog file for a commit msg or Google+")
 group = parser.add_mutually_exclusive_group()
@@ -39,8 +63,6 @@ c=args.changelog
 if not os.path.exists(c):
 	print >> sys.stderr, "'%s' does not exist"%(c)
 	sys.exit()
-
-releases=["trusty", "wily"]
 
 """
 the-powder-toy (84.2-1~getdeb1) precise; urgency=low
@@ -106,7 +128,7 @@ if args.google:
 				package_found = True
 	name=args.google.split("/")[-1].replace("%20", " ")
 	version=m.group("version").split(":")[-1].split("-")[0]
-	releases="+".join(releases)
+	releases="+".join(filter_releases(args.google, version))
 	output = "*%s %s (%s)*\n"%(name, version, releases)
 	output += description
 	output += "\n"
