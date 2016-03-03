@@ -44,7 +44,7 @@ def filter_releases(url, version):
 	global releases
 	rel=get_releases(url)
 	dates=[x["date"] for x in rel if x["version"] == version]
-	ret = [x["release"] for x in releases for y in rel if x["date"] == y["date"]]
+	ret = [x["release"] for x in releases for y in dates if x["date"] == y]
 	return ret
 
 parser = argparse.ArgumentParser(description="parses a debian/changelog file for a commit msg or Google+")
