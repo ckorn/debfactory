@@ -24,7 +24,7 @@ from gi.repository import Gtk, Gdk
 from gi.repository import GObject
 import requests
 
-releases=[{"release" : "trusty", "date": "14.04" }, {"release": "wily", "date": "15.10" }]
+releases=[{"release" : "xenial", "date": "16.04" }]
 
 def get_releases(url):
 	r = requests.get(url)
