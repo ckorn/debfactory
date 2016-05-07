@@ -25,6 +25,8 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
 from gi.repository import GObject
 import requests
+import urllib
+from urlparse import urlparse
 
 releases=[{"release" : "xenial", "date": "16.04" }]
 
@@ -48,6 +50,11 @@ def filter_releases(url, version):
 	dates=[x["date"] for x in rel if x["version"] == version]
 	ret = [x["release"] for x in releases for y in dates if x["date"] == y]
 	return ret
+
+def quote_url_path(url):
+	o = urlparse(url)
+	r = "%s://%s%s"%(o.scheme, o.netloc, urllib.quote(o.path))
+	return r
 
 parser = argparse.ArgumentParser(description="parses a debian/changelog file for a commit msg or Google+")
 group = parser.add_mutually_exclusive_group()
@@ -138,7 +145,7 @@ if args.google:
 	output += msg + " #twt"
 	output += "\n"
 	output += "\n"
-	output += args.google
+	output += quote_url_path(args.google)
 # create output for git commit msg
 elif args.message:
 	name = m.group("name")
