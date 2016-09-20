@@ -47,9 +47,19 @@ def getURL(settings, package):
 			return None
 	return url
 
+def getRepoPath():
+	start = Path(os.path.abspath(os.path.curdir))
+	git = start.joinpath(".git")
+	while not git.is_dir() and str(start) != "/":
+		start = start.parent
+		git = start.joinpath(".git")
+	return str(start)
+
 def main():
 	since = sys.argv[1]
-	repo = Repo(os.path.abspath(os.path.curdir))
+	repoDir = getRepoPath()
+	os.chdir(repoDir)
+	repo = Repo(repoDir)
 	relevant = getRelevantCommits(repo, repo.active_branch.name, since)
 	settings = loadSettings()
 	for commit in relevant:
