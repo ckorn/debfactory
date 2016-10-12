@@ -8,6 +8,9 @@ from getchangelog import getChangelog
 
 SETTINGS_FILE = "~/.config/google_changelog_links.json"
 
+class Data:
+	pass
+
 def loadSettings():
 	global SETTINGS_FILE
 	settings_file=Path(os.path.expanduser(SETTINGS_FILE))
@@ -21,7 +24,7 @@ def saveSettings(settings):
 	settings_file=Path(os.path.expanduser(SETTINGS_FILE))
 	settings_file.write_text(json_settings)
 
-def getRelevantCommits(repo, branch, since):
+def getRelevantCommits(repo, branch, since, skipFirst):
 	log = list(repo.iter_commits(branch, max_count=50))
 	relevant = []
 	found = False
@@ -33,6 +36,7 @@ def getRelevantCommits(repo, branch, since):
 	if found:
 		# start with oldest first
 		relevant.reverse()
+		if skipFirst: relevant = relevant[1:]
 		return relevant
 	return []
 
@@ -55,13 +59,27 @@ def getRepoPath():
 		git = start.joinpath(".git")
 	return str(start)
 
+def getSinceKey(repoDir):
+	return "since-" + repoDir
+
+def getSince(settings, repoDir):
+	x = Data()
+	x.sinceFromSettings = False
+	if len(sys.argv) == 2:
+		x.since = sys.argv[1]
+	else:
+		x.since = settings.get(getSinceKey(repoDir))
+		x.sinceFromSettings = True
+	return x
+
 def main():
-	since = sys.argv[1]
+	settings = loadSettings()
 	repoDir = getRepoPath()
+	dataSince = getSince(settings, repoDir)
+	if dataSince.since is None: return -1
 	os.chdir(repoDir)
 	repo = Repo(repoDir)
-	relevant = getRelevantCommits(repo, repo.active_branch.name, since)
-	settings = loadSettings()
+	relevant = getRelevantCommits(repo, repo.active_branch.name, dataSince.since, dataSince.sinceFromSettings)
 	for commit in relevant:
 		files = [x for x in commit.stats.files.keys()]
 		for changelog in files:
@@ -70,6 +88,8 @@ def main():
 				url = getURL(settings, package)
 				if url is not None:
 					getChangelog(changelog, True, True, url, False, None, False, True)
+					settings[getSinceKey(repoDir)] = commit.hexsha
+					saveSettings(settings)
 					input("Enter to continue")
 
 if __name__ == "__main__":
