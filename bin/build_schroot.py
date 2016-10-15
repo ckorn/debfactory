@@ -229,20 +229,19 @@ def chroot_postinstall_update(chrootdir, release, arch):
     os.system("chroot "+chrootdir+" apt-get -y --no-install-recommends upgrade")
     os.system("chroot "+chrootdir+" apt-get clean")
     os.system("du -sh "+chrootdir)
-    schroot_conf = ""
-    schroot_conf += "["+release+"-"+arch+"]"+"\n"
-    schroot_conf += "type=directory\n"
-    schroot_conf += "directory="+chrootdir+"\n"
-    schroot_conf += "union-type=aufs\n"
-    schroot_conf += "groups=lpadmin\n"
-    if options.sbuild == 1:
-    	schroot_conf += "root-groups=sbuild\n"
-    if arch=="i386":
-    	schroot_conf += "personality=linux32\n"
-    config_fn = "/etc/schroot/chroot.d/" + release + "-" + arch         
-    config_file = open(config_fn, 'w')
-    config_file.writelines(schroot_conf)
-    config_file.close()
+    config_fn = "/etc/schroot/chroot.d/" + release + "-" + arch
+    if not os.path.isfile(config_fn):
+        schroot_conf = ""
+        schroot_conf += "["+release+"-"+arch+"]"+"\n"
+        schroot_conf += "type=directory\n"
+        schroot_conf += "directory="+chrootdir+"\n"
+        schroot_conf += "union-type=aufs\n"
+        schroot_conf += "groups=lpadmin\n"
+        if options.sbuild == 1: schroot_conf += "root-groups=sbuild\n"
+        if arch=="i386": schroot_conf += "personality=linux32\n"
+        config_file = open(config_fn, 'w')
+        config_file.writelines(schroot_conf)
+        config_file.close()
     print ""
     print "You can now use your schroot with:\n\tschroot -c "+release+"-"+arch+" -p"
 
