@@ -30,48 +30,13 @@ import sys
 import re
 from launchpadlib.launchpad import Launchpad, EDGE_SERVICE_ROOT
 from launchpadlib.credentials import Credentials
+from common import *
 
-def get_changelog(i, filename):
-	changelog = file(filename, "r")
-	current_changelog = 0
-	changelog_dict = {'package' : '', 'version' : '', 'release' : '', 'bugs_to_be_closed' : [], 'changelog_entry' : ''}
-
-	for line in changelog.readlines():
-		line = line.strip('\r\n')
-		if not line:
-			if current_changelog == i:
-				changelog_dict['changelog_entry'] += '\n'
-			continue
-		if not line.startswith(' '):
-			current_changelog += 1
-			if current_changelog == i:
-				parts = line.split()
-				changelog_dict['changelog_entry'] += line + '\n'
-				changelog_dict['package'] = parts[0]
-				changelog_dict['version'] = parts[1].strip('()')
-				changelog_dict['release'] = parts[2].strip(';')
-		if current_changelog > i:
-			break
-		if line.startswith('  ') and current_changelog == i:
-			changelog_dict['changelog_entry'] += line + '\n'
-		if line.startswith(' -- ') and current_changelog == i:
-			changelog_dict['changelog_entry'] += line + '\n'
-
-	line_matches = re.finditer('\(LP:\s*(?P<buglist>.+?\))', changelog_dict['changelog_entry'], re.DOTALL)
-	for line_match in line_matches:
-		bug_matches = re.finditer('#(?P<bugnum>\d+)', line_match.group('buglist'))
-		for bug_match in bug_matches:
-			bugnum = bug_match.group('bugnum')
-			if not bugnum in changelog_dict['bugs_to_be_closed']:
-				changelog_dict['bugs_to_be_closed'].append(bugnum)
-
-	return changelog_dict
 
 def check_not_empty(bugs):
 	if len(bugs) == 0:
 		print "No bugs found to fix"
 		sys.exit(3)
-
 
 if __name__ == "__main__":
 	if len(sys.argv) < 2:

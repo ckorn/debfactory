@@ -94,8 +94,11 @@ def topLevelName(files):
                     return None
     return name
 
-def parseChangelogField(fieldname):
-    p1 = Popen(["dpkg-parsechangelog"], stdout=PIPE)
+def parseChangelogField(fieldname, changelogFile=None):
+    args = ["dpkg-parsechangelog"]
+    if changelogFile:
+        args += ["-l", changelogFile]
+    p1 = Popen(args, stdout=PIPE)
     p2 = Popen(["grep", "^%(fieldname)s:"%locals()], stdin=p1.stdout, stdout=PIPE)
     p3 = Popen(["sed", "s/^%(fieldname)s: //"%locals()], stdin=p2.stdout, stdout=PIPE)
     p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
@@ -223,6 +226,101 @@ def apply_new_debian_dir(tmp_dir):
     untar(os.path.join(tmp_dir, debian_tarball))
     move_files('./debian/', '.')
     os.rmdir('./debian')
+
+def get_changelog(i, filename):
+    changelog = file(filename, "r")
+    current_changelog = 0
+    changelog_dict = {'package' : '', 'version' : '', 'release' : '', 'bugs_to_be_closed' : [], 'changelog_entry' : ''}
+
+    for line in changelog.readlines():
+        line = line.strip('\r\n')
+        if not line:
+            if current_changelog == i:
+                changelog_dict['changelog_entry'] += '\n'
+            continue
+        if not line.startswith(' '):
+            current_changelog += 1
+            if current_changelog == i:
+                parts = line.split()
+                changelog_dict['changelog_entry'] += line + '\n'
+                changelog_dict['package'] = parts[0]
+                changelog_dict['version'] = parts[1].strip('()')
+                changelog_dict['release'] = parts[2].strip(';')
+        if current_changelog > i:
+            break
+        if line.startswith('  ') and current_changelog == i:
+            changelog_dict['changelog_entry'] += line + '\n'
+        if line.startswith(' -- ') and current_changelog == i:
+            changelog_dict['changelog_entry'] += line + '\n'
+
+    line_matches = re.finditer('\(LP:\s*(?P<buglist>.+?\))', changelog_dict['changelog_entry'], re.DOTALL)
+    for line_match in line_matches:
+        bug_matches = re.finditer('#(?P<bugnum>\d+)', line_match.group('buglist'))
+        for bug_match in bug_matches:
+            bugnum = bug_match.group('bugnum')
+            if not bugnum in changelog_dict['bugs_to_be_closed']:
+                changelog_dict['bugs_to_be_closed'].append(bugnum)
+
+    return changelog_dict
+
+def getPackages(lines):
+    packages = []
+    package = {}
+    description = ""
+    empty = True
+    for line in lines:
+        line = line.strip("\n\r")
+        if line == "":
+            package["Description"] = description
+            if not empty: packages.append(package)
+            description = ""
+            package = {}
+            empty = True
+        elif line.startswith(" "):
+            empty = False
+            description += line + "\n"
+        else:
+            parts=line.split(':', 1)
+            package[parts[0]] = parts[1][1:]
+            empty = False
+    return packages
+
+
+def getBinaryPackages(release, component, arch):
+    global MIRROR_URL, GETDEB_SUBDIR
+    http_connection = HTTPConnection(MIRROR_URL)
+    # http://build.getdeb.net/ubuntu/dists/yakkety-getdeb-testing/apps/binary-amd64/Packages
+    packagesFile = 'http://' + MIRROR_URL + '/' + GETDEB_SUBDIR + '/ubuntu/dists/' + release + '-getdeb-testing/' + component + '/binary-' + arch + '/Packages'
+    http_connection.request('GET', packagesFile)
+    http_response = http_connection.getresponse()
+    if http_response.status != 200: return None
+    data = http_response.read()
+    http_connection.close()
+    data = data.split('\n')
+    binary_packages = getPackages(data)
+    package_files = []
+    for package in binary_packages:
+        source = package.get("Source")
+        if not source: source = package["Package"]
+        # a package can exist in different versions
+        exists=[x for x in package_files if x["Source"]==source and x["Version"] == package["Version"]]
+        if len(exists) == 0:
+            package_dict = {}
+            package_dict["Source"] = source
+            package_dict["Version"] = package["Version"]
+            package_dict["Files"] = []
+            package_files.append(package_dict)
+        elif len(exists) == 1:
+            package_dict = exists[0]
+        else: assert False
+        assert package["Version"] == package_dict["Version"], "%s: %s"%(package, package_dict)
+        package_dict["Files"].append(package["Filename"])
+    return package_files
+
+def downloadPackages(files):
+    for f in files:
+        c='wget -q ' + 'http://' + MIRROR_URL + '/' + GETDEB_SUBDIR + '/ubuntu/' + f
+        exe(c)
 
 class MakeTempDir(object):
     def __enter__(self):
