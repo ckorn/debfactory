@@ -28,7 +28,7 @@ import requests
 import urllib
 from urllib.parse import urlparse
 
-releases=[{"release" : "xenial", "date": "16.04" }]
+releases=[{"release" : "xenial", "date": "16.04" }, {"release" : "yakkety", "date": "16.10" }]
 
 def get_releases(url):
 	r = requests.get(url)
