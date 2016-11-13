@@ -52,16 +52,21 @@ mylookup = TemplateLookup(directories=['templates'])
 
 def loadSettings():
 	global SETTINGS_FILE
-	settings_file=Path(os.path.expanduser(SETTINGS_FILE))
-	if settings_file.is_file():
-		return json.loads(settings_file.read_text())
+	settingsPath = os.path.expanduser(SETTINGS_FILE)
+	if os.path.isfile(settingsPath):
+		f = open(settingsPath, 'r')
+		t = f.read()
+		f.close()
+		return json.loads(t)
 	return {}
 
 def saveSettings(settings):
 	global SETTINGS_FILE
 	json_settings = json.dumps(settings, sort_keys=True, indent=4, separators=(',', ': '))
-	settings_file=Path(os.path.expanduser(SETTINGS_FILE))
-	settings_file.write_text(json_settings)
+	settingsPath = os.path.expanduser(SETTINGS_FILE)
+	f = open(settingsPath, 'w')
+	f.write(json_settings)
+	f.close()
 
 def serve_template(templatename, **kwargs):
     mytemplate = mylookup.get_template(templatename)
@@ -180,7 +185,6 @@ class testit(Thread):
 		self.exe("cd /tmp ; rm -rf "+directory)
 
 if __name__ == "__main__":
-	global SENDER_MAIL, RECV_MAIL
 	if len(sys.argv) == 1:
 		print "Usage: "+sys.argv[0]+" <archiveUrl> <Sources.gz> <HTML-File>"
 		print "Example: "+sys.argv[0]+" \"http://archive.getdeb.net/getdeb/ubuntu/\""+ \
