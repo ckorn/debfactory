@@ -11,3 +11,6 @@ debfactory.e4p
 .settings
 .idea
 *.pyc
+bin/*.html
+bin/*.log
+bin/*.json
