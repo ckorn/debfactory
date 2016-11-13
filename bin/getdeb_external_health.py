@@ -28,13 +28,44 @@ import operator
 import cgi
 from threading import Thread
 from xml.dom import minidom
+from mako.template import Template
+from mako.lookup import TemplateLookup
+from mako import exceptions
+LAUNCH_DIR = os.path.abspath(sys.path[0])
+LIB_DIR = os.path.join(LAUNCH_DIR, '..', 'lib')
+sys.path.insert(0, LIB_DIR)
+from mail import send_mail
+
+SETTINGS_FILE = LAUNCH_DIR + "/getdeb_external_health.json"
+SENDER_MAIL=""
+RECV_MAIL=""
 
 data = []
 archiveUrl = ""
 nowatch = []
 warning = []
+ignored = []
 uptodate = []
 needsupdate = []
+
+mylookup = TemplateLookup(directories=['templates'])
+
+def loadSettings():
+	global SETTINGS_FILE
+	settings_file=Path(os.path.expanduser(SETTINGS_FILE))
+	if settings_file.is_file():
+		return json.loads(settings_file.read_text())
+	return {}
+
+def saveSettings(settings):
+	global SETTINGS_FILE
+	json_settings = json.dumps(settings, sort_keys=True, indent=4, separators=(',', ': '))
+	settings_file=Path(os.path.expanduser(SETTINGS_FILE))
+	settings_file.write_text(json_settings)
+
+def serve_template(templatename, **kwargs):
+    mytemplate = mylookup.get_template(templatename)
+    return mytemplate.render(**kwargs)
 
 class testit(Thread):
 	def __init__ (self,source):
@@ -74,6 +105,8 @@ class testit(Thread):
 		else:
 			if self._source["patch"][1].endswith("debian.tar.bz2"):
 				extractFlag = 'j'
+			elif self._source["patch"][1].endswith("debian.tar.xz"):
+				extractFlag = 'J'
 			else:
 				extractFlag = 'z'
 			self.exe("cd /tmp/"+directory+" ; mkdir "+directory)
@@ -93,6 +126,9 @@ class testit(Thread):
 		xmldoc = minidom.parse(xmlfile)
 
 		testAdded = False
+
+		#print self._source["Package"]
+
 
 		if len(xmldoc.firstChild.childNodes) == 1:
 			self._source["Warning"].append("Unknown warning. Uscan reports nothing.")
@@ -114,14 +150,27 @@ class testit(Thread):
 				if entry.nodeName == "debian-mangled-uversion":
 					self._source["DebianMangledUVersion"] = entry.firstChild.data
 				if entry.nodeName == "upstream-version":
-					self._source["UpstreamVersion"] = entry.firstChild.data
+					if not entry.firstChild:
+						self._source["UpstreamVersion"] = "0"
+						self._source["Warning"].append("UpstreamVersion=0")
+						os.system("cat " + xmlfile)
+					else:
+						self._source["UpstreamVersion"] = entry.firstChild.data
 				if entry.nodeName == "upstream-url":
 					self._source["UpstreamURL"] = entry.firstChild.data
 				if entry.nodeName == "warnings":
 					self._source["Warning"].append(entry.firstChild.data)
 
 		if len(self._source["Warning"]) > 0:
-			warning.append(self._source)
+			ignore = False
+			# Google just down their code hosting. Just too lazy to fix all packages.
+			for w in self._source["Warning"]:
+				if "no matching hrefs for watch line" in w and "code.google.com" in w:
+					ignore = True
+			if ignore:
+				ignored.append(self._source)
+			else:
+				warning.append(self._source)
 			testAdded = True
 
 		if not testAdded:
@@ -131,16 +180,22 @@ class testit(Thread):
 		self.exe("cd /tmp ; rm -rf "+directory)
 
 if __name__ == "__main__":
+	global SENDER_MAIL, RECV_MAIL
 	if len(sys.argv) == 1:
-		print "Usage: "+sys.argv[0]+" <archiveUrl> <Sources.gz>"
+		print "Usage: "+sys.argv[0]+" <archiveUrl> <Sources.gz> <HTML-File>"
 		print "Example: "+sys.argv[0]+" \"http://archive.getdeb.net/getdeb/ubuntu/\""+ \
-		      " \"http://archive.getdeb.net/getdeb/ubuntu/dists/karmic-getdeb/apps/source/Sources.gz\""
+		      " \"http://archive.getdeb.net/getdeb/ubuntu/dists/karmic-getdeb/apps/source/Sources.gz\""+ \
+		      " getdeb.html"
 		sys.exit(1)
 
 	archiveUrl = sys.argv[1]
 	sources = sys.argv[2]
+	htmlfile = sys.argv[3]
 	numberOfThreads = 7
 	threads = []
+
+	# Remember cwd and change back later to find the templates
+	curdir = os.getcwd()
 
 	os.chdir("/tmp")
 	if os.path.isfile("/tmp/Sources.gz"): os.remove("/tmp/Sources.gz")
@@ -175,6 +230,7 @@ if __name__ == "__main__":
 			if filename.endswith("diff.gz"): source["patch"] = (md5sum, filename)
 			if filename.endswith("debian.tar.gz"): source["patch"] = (md5sum, filename)
 			if filename.endswith("debian.tar.bz2"): source["patch"] = (md5sum, filename)
+			if filename.endswith("debian.tar.xz"): source["patch"] = (md5sum, filename)
 			if filename.endswith("dsc"): source["dsc"] = (md5sum, filename)
 		if infiles and line.find(":") != -1: infiles = False
 
@@ -199,12 +255,6 @@ if __name__ == "__main__":
 						threadAdded = True
 						break
 				if not threadAdded: time.sleep(0.010)
-		#print "Package: %s" % source["Package"]
-		#print "Version: %s" % source["Version"]
-		#print "Directory: %s" % source["Directory"]
-		#print "tar.gz: %s %s" % (source["tar.gz"][0], source["tar.gz"][1])
-		#print "patch: %s %s" % (source["patch"][0], source["patch"][1])
-		#print "dsc: %s %s" % (source["dsc"][0], source["dsc"][1])
 
 	threadsFinished = False
 	while not threadsFinished:
@@ -219,59 +269,25 @@ if __name__ == "__main__":
 	needsupdate.sort(key=operator.itemgetter('Package'))
 	uptodate.sort(key=operator.itemgetter('Package'))
 
-	htmlfile = "/tmp/report"+str(random.randint(0,1000))+".html"
-	if os.path.isfile(htmlfile): os.remove(htmlfile)
-	html = open(htmlfile, "w+")
-	html.write("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">")
-	html.write("<html xmlns=\"http://www.w3.org/1999/xhtml\">\n")
-	html.write("<head>\n")
-	html.write("<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n")
-	html.write("<title>APT repository external health status report ("+str(len(data))+" packages)</title>\n")
-	html.write("</head>\n")
-	html.write("<body>\n")
-	html.write("<h1>Needs Update ("+str(len(needsupdate))+")</h1><br/>\n")
-	html.write("<table>\n")
-	html.write("<tr><td>Package</td><td>Debian version</td><td>Upstream version</td></tr>\n")
-	for source in needsupdate:
-		html.write("<tr>")
-		html.write("    <td>"+source["Package"]+" <a href=\""+archiveUrl+source["Directory"]+"/"+source["patch"][1]+"\">patch</a> <a href=\""+archiveUrl+source["Directory"]+"/"+source["dsc"][1]+"\">dsc</a></td>")
-		html.write("    <td>"+source["DebianUVersion"]+" ("+source["DebianMangledUVersion"]+")</td>")
-		html.write("    <td><a href=\""+cgi.escape(source["UpstreamURL"])+"\">"+source["UpstreamVersion"]+"</a></td>")
-		html.write("</tr>\n")
-	html.write("</table>")
+	if needsupdate is not None and SENDER_MAIL != "" and RECV_MAIL != "":
+		settings=loadSettings()
+		for source in needsupdate:
+			settingsPackage=settings.get(source['Package'])
+			if settingsPackage is None or settingsPackage['Version'] != source['UpstreamVersion']:
+				send_mail(SENDER_MAIL, RECV_MAIL, source['Package'] + " (" + source['UpstreamVersion'] + ")", "")
+				settings[source['Package']] = {}
+				settings[source['Package']]['Version'] = source['UpstreamVersion']
+				saveSettings(settings)
 
-	html.write("<br/><br/><br/>\n")
-	html.write("<h1>Warnings ("+str(len(warning))+")</h1><br/>\n")
-	html.write("<table>\n")
-	html.write("<tr><td>Package</td><td>Warnings</td></tr>\n")
-	for source in warning:
-		html.write("<tr>")
-		html.write("    <td valign=\"top\"><a href=\""+archiveUrl+source["Directory"]+"/"+source["dsc"][1]+"\">"+source["Package"]+"</a></td>")
-		html.write("    <td valign=\"top\">")
-		for warning in source["Warning"]:
-			html.write(warning+"<br/>")
-		html.write("    </td>")
-		html.write("</tr>\n")
-	html.write("</table>")
+	os.chdir(curdir)
 
-	html.write("<br/><br/><br/>\n")
-	html.write("<h1>No watch ("+str(len(nowatch))+")</h1><br/>\n")
-	for source in nowatch:
-		html.write("<a href=\""+archiveUrl+source["Directory"]+"/"+source["dsc"][1]+"\">"+source["Package"]+"</a><br/>\n")
+	render_args = { 'data': data, 'needsupdate': needsupdate, 'archiveUrl': archiveUrl, 'warning': warning, 'ignored': ignored, 'nowatch': nowatch, 'uptodate': uptodate }
+	try:
+		#html_code = serve_template('templ.html', data = data, needsupdate = needsupdate, archiveUrl = archiveUrl, warning = warning, nowatch = nowatch, uptodate = uptodate )
+		html_code = serve_template('templ.html', render_args = render_args)
+	except:
+		html_code = exceptions.text_error_template().render()
 
-	html.write("<br/><br/><br/>\n")
-	html.write("<h1>Up to Date ("+str(len(uptodate))+")</h1><br/>\n")
-	html.write("<table>\n")
-	html.write("<tr><td>Package</td><td>Debian version</td><td>Upstream version</td></tr>\n")
-	for source in uptodate:
-		html.write("<tr>")
-		html.write("    <td>"+source["Package"]+" <a href=\""+archiveUrl+source["Directory"]+"/"+source["patch"][1]+"\">patch</a> <a href=\""+archiveUrl+source["Directory"]+"/"+source["dsc"][1]+"\">dsc</a></td>")
-		html.write("    <td>"+source["DebianUVersion"]+" ("+source["DebianMangledUVersion"]+")</td>")
-		html.write("    <td><a href=\""+cgi.escape(source["UpstreamURL"])+"\">"+source["UpstreamVersion"]+"</a></td>")
-		html.write("</tr>\n")
-	html.write("</table>")
-
-	html.write("</body></html>")
-	html.close()
-
-	os.system("x-www-browser "+htmlfile)
+	with open(os.getenv('PWD')+"/"+htmlfile, 'w') as f:
+		f.write(html_code)
+		f.close()

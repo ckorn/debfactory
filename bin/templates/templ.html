@@ -1,0 +1,81 @@
+<%
+	data = render_args['data']
+        needsupdate = render_args['needsupdate']
+        warning = render_args['warning']
+        ignored = render_args['ignored']
+        nowatch = render_args['nowatch']
+        uptodate = render_args['uptodate']
+        archiveUrl = render_args['archiveUrl']
+%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>APT repository external health status report (${len(data)} packages)</title>
+</head>
+
+<body>
+<h1>Needs Update (${len(needsupdate)})</h1><br/>
+<table>
+	<tr>
+		<td>Package</td>
+		<td>Debian version</td>
+		<td>Upstream version</td>
+		<td>Notify mailing list</td>
+	</tr>
+	% for source in needsupdate:
+		<tr>
+			<td>${source['Package']} <a href="${archiveUrl+source['Directory']+"/"+source['patch'][1] | h}">patch</a> <a href="${archiveUrl+source['Directory']+"/"+source['dsc'][1] | h}">dsc</a></td>
+			<td>${source['DebianUVersion']} (${source['DebianMangledUVersion']})</td>
+			<td><a href="${source['UpstreamURL'] | h}">${source['UpstreamVersion']}</a></td>
+			<td><a href="${"mailto:getdeb-uploaders@lists.launchpad.net?subject="+source['Package']+"%20"+source['UpstreamVersion']+"&body=Starting%20work%20on%20this%20package"}">start work</a></td>
+		</tr>
+	% endfor
+</table>
+
+<br/><br/><br/>
+<h1>Warnings (${len(warning)}, Ignored=${len(ignored)})</h1><br/>
+<table>
+	<tr>
+		<td>Package</td>
+		<td>Warnings</td>
+		<td>Notify mailing list</td>
+	</tr>
+	% for source in warning:
+		<tr>
+			<td valign="top"><a href="${archiveUrl+source['Directory']+"/"+source['dsc'][1] | h}">${source['Package']}</a></td>
+			<td valign="top">
+			% for warning in source['Warning']:
+				${warning}<br/>
+			% endfor
+			</td>
+			<td><a href="${"mailto:getdeb-uploaders@lists.launchpad.net?subject="+source['Package']+"%20fix%20warning&body=Starting%20work%20on%20this%20package"}">start work</a></td>
+		</tr>
+	% endfor
+</table>
+
+<br/><br/><br/>
+<h1>No watch (${len(nowatch)})</h1><br/>
+	% for source in nowatch:
+		<a href="${archiveUrl+source['Directory']+"/"+source['dsc'][1] | h}">${source['Package']}</a><br/>
+	% endfor
+
+<br/><br/><br/>
+<h1>Up to Date (${len(uptodate)})</h1><br/>
+<table>
+	<tr>
+		<td>Package</td>
+		<td>Debian version</td>
+		<td>Upstream version</td>
+	</tr>
+	% for source in uptodate:
+		<tr>
+			<td>${source['Package']} <a href="${archiveUrl+source['Directory']+"/"+source['patch'][1] | h}">patch</a> <a href="${archiveUrl+source['Directory']+"/"+source['dsc'][1] | h}">dsc</a></td>
+			<td>${source['DebianUVersion']} (${source['DebianMangledUVersion']})</td>
+			<td><a href="${source['UpstreamURL'] | h}">${source['UpstreamVersion']}</a></td>
+		</tr>
+	% endfor
+</table>
+
+</body>
+</html>
