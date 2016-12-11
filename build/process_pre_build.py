@@ -209,6 +209,7 @@ def sbuild_package(release, component, control_file, arch):
         return -1
     elapsed_time = `int(time.time() - start_time)`
     (dummy, build_tail) = commands.getstatusoutput('tail -2 ' + log_filename)
+    (dummy, not_installed) = commands.getstatusoutput('grep "but is not installed to anywhere" ' + log_filename)
     report_msg = "List of files:\n"
     report_msg += "--------------\n"
     if rc == 0:
@@ -245,6 +246,7 @@ def sbuild_package(release, component, control_file, arch):
         status = "FAILED"
     report_title = "Build for %s/%s/%s (%s) %s\n" \
         % (release, component, name_version, arch, status)
+    report_msg += '\n' + not_installed + '\n'
     report_msg += '\n' + build_tail + '\n'
     report_msg += "Log file: %s%s\n" % (config['base_url'], log_filename)
     Log.print_(report_title)
