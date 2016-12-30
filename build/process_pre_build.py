@@ -242,6 +242,8 @@ def sbuild_package(release, component, control_file, arch):
                     return
                 finally:
                     changes_file.remove()
+        if not_installed is not None and len(not_installed.strip()) > 0:
+            status = "MISSES FILES"
     else:
         status = "FAILED"
     report_title = "Build for %s/%s/%s (%s) %s\n" \
